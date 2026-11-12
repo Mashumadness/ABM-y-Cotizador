@@ -19,12 +19,23 @@
     "directories": {
       "output": "dist-electron"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Mashumadness",
+        "repo": "ABM-y-Cotizador",
+        "releaseType": "release"
+      }
+    ],
     "files": [
       "dist/**/*",
       "electron/**/*",
       "public/favicon.ico",
       "public/logo-tiker.png"
     ],
+    "portable": {
+      "artifactName": "Tiker-Cotizador-Portable-${version}.${ext}"
+    },
     "win": {
       "target": [
         "nsis",
@@ -33,6 +44,7 @@
       "icon": "public/favicon.ico"
     },
     "nsis": {
+      "artifactName": "Tiker-Cotizador-Setup-${version}.${ext}",
       "oneClick": true,
       "perMachine": false,
       "allowToChangeInstallationDirectory": false,
@@ -42,6 +54,7 @@
     }
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "lucide-react": "^1.16.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

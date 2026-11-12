@@ -1,34 +1,88 @@
-name: Build Windows installer
+name: Publicar nueva versión (Windows)
 
+# Se ejecuta solo a demanda: Actions > "Publicar nueva versión (Windows)" > Run workflow
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Nueva versión (ej. 1.1.0). Tiene que ser mayor a la actual.'
+        required: true
+        type: string
+      notes:
+        description: 'Novedades de esta versión (opcional)'
+        required: false
+        type: string
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
-  build:
+  release:
     runs-on: windows-latest
+    env:
+      NEW_VERSION: ${{ inputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+
+      - name: Validar versión
+        shell: bash
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          if ! [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::La versión '$NEW_VERSION' no es válida. Usá el formato X.Y.Z (ej. 1.1.0)."
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/v$NEW_VERSION" >/dev/null; then
+            echo "::error::Ya existe el tag v$NEW_VERSION."
+            exit 1
+          fi
+          HIGHEST=$(printf '%s\n%s\n' "$CURRENT_VERSION" "$NEW_VERSION" | sort -V | tail -n1)
+          if [ "$NEW_VERSION" = "$CURRENT_VERSION" ] || [ "$HIGHEST" != "$NEW_VERSION" ]; then
+            echo "::error::La versión $NEW_VERSION tiene que ser mayor a la actual ($CURRENT_VERSION)."
+            exit 1
+          fi
+          echo "Versión actual: $CURRENT_VERSION -> nueva: $NEW_VERSION"
+
+      - name: Actualizar versión en package.json
+        shell: bash
+        run: npm version "$NEW_VERSION" --no-git-tag-version
+
       - name: Install dependencies
         run: npm ci
-      - name: Build Electron installers
-        run: npm run electron:build -- --publish never
-      - name: Upload installers
-        uses: actions/upload-artifact@v4
-        with:
-          name: Tiker-Windows-Installers
-          path: |
-            dist-electron/*.exe
-            dist-electron/*.blockmap
-            dist-electron/latest.yml
-          if-no-files-found: error
-          retention-days: 14
-  
+
+      - name: Build y publicar en GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run electron:build -- --publish always
+
+      - name: Guardar versión y crear tag
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "Release v$NEW_VERSION"
+          git tag "v$NEW_VERSION"
+          git push origin HEAD:main
+          git push origin "v$NEW_VERSION"
+
+      - name: Agregar novedades al Release
+        if: ${{ inputs.notes != '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_NOTES: ${{ inputs.notes }}
+        run: gh release edit "v$NEW_VERSION" --notes "$RELEASE_NOTES"

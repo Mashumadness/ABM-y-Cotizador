@@ -54,6 +54,27 @@ Luego abre en tu navegador: **`http://localhost:5173`**
 
 ---
 
+## 📦 Publicar una nueva versión (instalador + actualización automática)
+
+Las versiones se publican **a demanda** (no con cada commit a `main`):
+
+1. Subí a `main` todos los cambios que querés incluir (`git push`).
+2. En GitHub entrá a **Actions → "Publicar nueva versión (Windows)" → Run workflow**.
+3. Completá:
+   - **Nueva versión:** formato `X.Y.Z` y mayor a la actual (ej. `1.1.0`).
+   - **Novedades** (opcional): texto que se muestra en el Release.
+4. El workflow actualiza la versión en `package.json`, genera el instalador, lo publica en **GitHub Releases** y crea el tag `vX.Y.Z`.
+
+Cuando la persona abre la app instalada, se busca si hay una versión nueva (y luego cada 4 horas). Si hay, aparece un aviso para **Descargar** o dejarlo para **Más tarde**. Una vez descargada, ofrece **Reiniciar ahora**; si no, se instala sola al cerrar la app.
+
+**Los datos no se pierden al actualizar:** productos, insumos, presupuestos y configuración se guardan en el perfil del usuario de Windows, no en la carpeta de instalación.
+
+> ⚠️ No cambiar `appId` ni `productName` en `package.json`: la app usa esos valores para encontrar los datos guardados y las actualizaciones.
+>
+> ℹ️ La actualización automática funciona con el **instalador** (`Tiker-Cotizador-Setup-X.Y.Z.exe`). El portable hay que reemplazarlo a mano.
+
+---
+
 ## 🐙 Comandos de Git para el día a día
 
 Para guardar y subir cambios a GitHub:

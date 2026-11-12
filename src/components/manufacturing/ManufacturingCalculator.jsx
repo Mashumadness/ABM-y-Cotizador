@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Calculator, 
   Layers, 
@@ -24,6 +24,9 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
+// Último estado del punto 3 (operación de máquinas, tinta y mano de obra)
+const OPERATION_STORAGE_KEY = 'tiker_manufacturing_operation_v1';
+
 export const ManufacturingCalculator = ({ 
   supplies = [],
   products = [], 
@@ -36,9 +39,9 @@ export const ManufacturingCalculator = ({
   onSaveToProducts,
   currencySymbol = '$' 
 }) => {
-  // Product to calculate
-  const [productName, setProductName] = useState('Imanes Personalizados Siluetados 5x5cm');
-  const [quantity, setQuantity] = useState(100);
+  // Product to calculate (arranca vacío cada vez que se entra a la pantalla)
+  const [productName, setProductName] = useState('');
+  const [quantity, setQuantity] = useState('');
   const [marginPercent, setMarginPercent] = useState(150); // 150% ganancia por defecto
   
   // Arma una fila de material a partir de un insumo del ABM (si existe)
@@ -53,20 +56,34 @@ export const ManufacturingCalculator = ({
     };
   };
 
-  // Materials used in this job
-  const [jobMaterials, setJobMaterials] = useState(() => [
-    buildMaterialFromSupply('1', 'sup-1', 5),
-    buildMaterialFromSupply('2', 'sup-3', 5),
-    buildMaterialFromSupply('3', 'sup-5', 5),
-  ].filter(m => m.supplyId));
+  // Materials used in this job (arranca vacío)
+  const [jobMaterials, setJobMaterials] = useState([]);
 
-  // Operational variables for this specific job
-  const [sheetsToPrint, setSheetsToPrint] = useState(5);
-  const [inkRatePerSheet, setInkRatePerSheet] = useState(workshopRates?.inkCostPerSheet || 180);
-  const [electricityMinutes, setElectricityMinutes] = useState(30);
-  const [hourlyElectricityRate, setHourlyElectricityRate] = useState(workshopRates?.hourlyElectricityRate || 1800);
-  const [laborMinutes, setLaborMinutes] = useState(45);
-  const [hourlyLaborRate, setHourlyLaborRate] = useState(workshopRates?.hourlyLaborRate || 6000);
+  // Operación de máquinas, tinta y mano de obra: se recuerda lo último cargado entre visitas
+  const [savedOperation] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(OPERATION_STORAGE_KEY)) || {};
+    } catch {
+      return {};
+    }
+  });
+  const [sheetsToPrint, setSheetsToPrint] = useState(savedOperation.sheetsToPrint ?? 5);
+  const [inkRatePerSheet, setInkRatePerSheet] = useState(savedOperation.inkRatePerSheet ?? (workshopRates?.inkCostPerSheet || 180));
+  const [electricityMinutes, setElectricityMinutes] = useState(savedOperation.electricityMinutes ?? 30);
+  const [hourlyElectricityRate, setHourlyElectricityRate] = useState(savedOperation.hourlyElectricityRate ?? (workshopRates?.hourlyElectricityRate || 1800));
+  const [laborMinutes, setLaborMinutes] = useState(savedOperation.laborMinutes ?? 45);
+  const [hourlyLaborRate, setHourlyLaborRate] = useState(savedOperation.hourlyLaborRate ?? (workshopRates?.hourlyLaborRate || 6000));
+
+  useEffect(() => {
+    localStorage.setItem(OPERATION_STORAGE_KEY, JSON.stringify({
+      sheetsToPrint,
+      inkRatePerSheet,
+      electricityMinutes,
+      hourlyElectricityRate,
+      laborMinutes,
+      hourlyLaborRate
+    }));
+  }, [sheetsToPrint, inkRatePerSheet, electricityMinutes, hourlyElectricityRate, laborMinutes, hourlyLaborRate]);
 
   // Workshop rates editor toggle & state
   const [isEditingBaseRates, setIsEditingBaseRates] = useState(false);
@@ -82,13 +99,22 @@ export const ManufacturingCalculator = ({
   const [templateSearch, setTemplateSearch] = useState('');
   const [materialSearches, setMaterialSearches] = useState({});
 
+  // Al entrar a la pantalla se respetan las tarifas recordadas; solo se pisan
+  // cuando cambian las tarifas base del taller (ej. al guardarlas o restaurar un backup).
+  const previousRatesRef = useRef(null);
   useEffect(() => {
     if (workshopRates) {
+      const ratesKey = JSON.stringify(workshopRates);
+      const isFirstRun = previousRatesRef.current === null;
+      const ratesChanged = !isFirstRun && previousRatesRef.current !== ratesKey;
+      previousRatesRef.current = ratesKey;
+
       setEditBaseRatesData({
         hourlyLaborRate: workshopRates.hourlyLaborRate || 6000,
         hourlyElectricityRate: workshopRates.hourlyElectricityRate || 1800,
         inkCostPerSheet: workshopRates.inkCostPerSheet || 180
       });
+      if (!ratesChanged) return;
       setHourlyLaborRate(workshopRates.hourlyLaborRate || 6000);
       setHourlyElectricityRate(workshopRates.hourlyElectricityRate || 1800);
       setInkRatePerSheet(workshopRates.inkCostPerSheet || 180);
@@ -529,7 +555,8 @@ export const ManufacturingCalculator = ({
                   type="number"
                   min="1"
                   value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
+                  placeholder="Ej. 100"
+                  onChange={(e) => setQuantity(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-bold text-brand-700 text-center focus:ring-2 focus:ring-brand-400"
                 />
               </div>
@@ -915,9 +942,15 @@ export const ManufacturingCalculator = ({
 
             {/* Botones de Acción Clave */}
             <div className="space-y-2 pt-2">
+              {!productName.trim() && (
+                <p className="text-[11px] text-amber-300 text-center">
+                  Completá la descripción del producto para continuar.
+                </p>
+              )}
               <button
                 onClick={handleSendToClientQuote}
-                className="w-full py-3.5 bg-gradient-to-r from-brand-600 to-rose-600 hover:from-brand-500 hover:to-rose-500 text-white font-extrabold rounded-2xl shadow-lg shadow-brand-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
+                disabled={!productName.trim()}
+                className="w-full disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 py-3.5 bg-gradient-to-r from-brand-600 to-rose-600 hover:from-brand-500 hover:to-rose-500 text-white font-extrabold rounded-2xl shadow-lg shadow-brand-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
               >
                 <span>⚡ Pasar a Presupuesto del Cliente</span>
                 <ArrowRight className="w-4 h-4" />
@@ -925,7 +958,8 @@ export const ManufacturingCalculator = ({
 
               <button
                 onClick={handleSaveToCatalog}
-                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                disabled={!productName.trim()}
+                className="w-full disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1.5"
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>Guardar en ABM Productos</span>
