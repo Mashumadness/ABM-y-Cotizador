@@ -26,7 +26,7 @@ export const Navbar = ({
           {/* Logo / Brand */}
           <div className="flex items-center">
             <img 
-              src="/logo-tiker.png" 
+              src={`${import.meta.env.BASE_URL}logo-tiker.png`} 
               alt="Tiker Logo" 
               className="h-11 w-auto object-contain drop-shadow-xs hover:scale-105 transition-transform cursor-pointer" 
               onClick={() => setActiveTab('manufacturing')}
