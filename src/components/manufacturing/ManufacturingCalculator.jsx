@@ -749,7 +749,7 @@ export const ManufacturingCalculator = ({
                 className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1.5"
               >
                 <Save className="w-3.5 h-3.5" />
-                <span>Guardar en Catálogo Fijo</span>
+                <span>Guardar en ABM Productos</span>
               </button>
             </div>
           </div>

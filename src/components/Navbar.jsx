@@ -24,17 +24,13 @@ export const Navbar = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo / Brand */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center">
             <img 
               src="/logo-tiker.png" 
               alt="Tiker Logo" 
-              className="h-11 w-auto object-contain drop-shadow-xs hover:scale-105 transition-transform" 
+              className="h-11 w-auto object-contain drop-shadow-xs hover:scale-105 transition-transform cursor-pointer" 
+              onClick={() => setActiveTab('manufacturing')}
             />
-            <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">
-                Tiker
-              </h1>
-            </div>
           </div>
 
           {/* Navigation Tabs */}
@@ -70,7 +66,7 @@ export const Navbar = ({
               )}
             </button>
 
-            {/* Catálogo de Productos */}
+            {/* ABM Productos */}
             <button
               onClick={() => setActiveTab('products')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
@@ -80,7 +76,7 @@ export const Navbar = ({
               }`}
             >
               <Package className="w-4 h-4" />
-              <span>Catálogo</span>
+              <span>ABM Productos</span>
               {productCount > 0 && (
                 <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-medium ${
                   activeTab === 'products' ? 'bg-brand-100 text-brand-800' : 'bg-slate-200 text-slate-700'
@@ -156,7 +152,7 @@ export const Navbar = ({
             }`}
           >
             <Package className="w-4 h-4" />
-            <span>Catálogo</span>
+            <span>ABM Productos</span>
           </button>
           <button
             onClick={() => setActiveTab('history')}

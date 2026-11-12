@@ -93,10 +93,10 @@ export const ProductList = ({
       {/* Top Banner & Quick Metrics */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-brand-600 via-rose-600 to-pink-600 rounded-3xl p-6 text-white shadow-lg shadow-brand-500/10">
         <div>
-          <span className="text-xs uppercase tracking-widest font-bold text-brand-100">Módulo de Catálogo</span>
-          <h2 className="text-2xl font-black tracking-tight mt-0.5">Inventario de Papelería</h2>
+          <span className="text-xs uppercase tracking-widest font-bold text-brand-100">Módulo ABM</span>
+          <h2 className="text-2xl font-black tracking-tight mt-0.5">ABM Productos</h2>
           <p className="text-sm text-brand-100/90 mt-1 max-w-xl">
-            Gestiona tus productos de encuadernación, stickers, agendas y papelería para cotizar rápido con tus clientes.
+            Gestiona, crea y edita tus productos de stickers, imanes y papelería para cotizar rápido con tus clientes.
           </p>
         </div>
         <button

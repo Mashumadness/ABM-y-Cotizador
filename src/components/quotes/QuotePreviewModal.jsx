@@ -141,11 +141,8 @@ export const QuotePreviewModal = ({
                 <img 
                   src="/logo-tiker.png" 
                   alt="Tiker Logo" 
-                  className="h-14 w-auto object-contain mb-2 print:h-12" 
+                  className="h-16 w-auto object-contain mb-1.5 print:h-14" 
                 />
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">
-                  Tiker
-                </h1>
                 <p className="text-xs text-slate-600 mt-1 whitespace-pre-line font-medium leading-relaxed">
                   {businessInfo?.tagline || 'Stickers UV y papelería creativa. Packs, pizarras y más.\nPersonalizados para tu emprendimiento 💛'}
                 </p>
