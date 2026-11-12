@@ -14,6 +14,7 @@ import {
   Check, 
   TrendingUp, 
   Package, 
+  Search,
   Info,
   ShieldCheck,
   Tag,
