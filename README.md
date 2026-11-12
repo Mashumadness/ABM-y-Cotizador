@@ -1,140 +1,70 @@
-# 🧲 Tiker — Taller Gráfico & Cotizador de Manufactura
+# 💛 Tiker — Cotizador & ABM de Productos
 
-Una aplicación web moderna, ágil e interactiva diseñada especialmente para el taller de manufactura gráfica **Tiker** (stickers troquelados, imanes personalizados, bobinas y packaging comercial: [tiker.com.ar](https://tiker.com.ar/)).
+Aplicación web desarrollada para **Tiker** ([tiker.com.ar](https://tiker.com.ar/)): stickers personalizados, imanes, pizarras, packaging y papelería creativa para emprendedores.
 
-Construida con **React**, **Tailwind CSS**, y **Lucide Icons**, funcionando 100% en el navegador con persistencia en **`localStorage`** y con una arquitectura modular lista para conectar a **Firebase Firestore**.
-
----
-
-## ⚡ El Núcleo: Costeo de Fabricación Industrial (Escandallo Interno)
-
-A diferencia de una simple tienda de reventa, **Tiker fabrica**:
-1. **Material base:** Pliegos de goma de imán flexible 0.4mm, vinilo autoadhesivo blanco, vinilo holográfico, opalina/ilustración 300g.
-2. **Sustrato superior impreso:** Papel autoadhesivo fotográfico o vinilo full color HD.
-3. **Acabado protector:** Film laminado en frío o calor (brillante, mate o holográfico).
-4. **Consumibles de máquina:** Tinta de impresión + electricidad y desgaste del plotter de corte/impresora.
-5. **Mano de obra (Hora hombre):** Minutos dedicados de operario a diseño, armado, laminado, corte siluetado y descarte.
-6. **Margen de Ganancia Ajustable:** Slider interactivo de rentabilidad (+50% mayorista, +150% normal, +200% minorista).
-
-### Doble Vista: Taller Interno vs. Presupuesto para el Cliente
-- **En la Interna:** Tienes el desglose exacto de cada insumo, tinta y minutos de trabajo para asegurar que **nunca vendas por debajo del costo**.
-- **Con un clic ("⚡ Pasar a Presupuesto"):** Se genera la cotización limpia para el cliente (por WhatsApp o PDF), donde el cliente **solo ve el producto terminado** (ej. *"100 Imanes personalizados siluetados 6x6cm con laminado brillante — $X total"*), protegiendo tus costos y secretos de taller.
+Construida con **React**, **Tailwind CSS** y **Lucide Icons**, funcionando de manera local y offline con persistencia en el navegador (`localStorage`).
 
 ---
 
-## 🚀 Inicio Rápido (Cómo Ejecutar la App)
+## ✨ ¿Qué hace esta aplicación?
 
-### 1. Requisitos Previos
-- Tener instalado [Node.js](https://nodejs.org/) (versión 18 o superior).
+### 1. Costos de productos (Cálculo interno)
+Calcula en el momento el costo real de fabricar cualquier producto personalizado combinando:
+- **Materiales e insumos:** Hojas de goma de imán flexible, vinilo autoadhesivo blanco/holográfico, papel fotográfico autoadhesivo y film laminado protector (brillo/mate).
+- **Hojas impresas & Tinta:** Costo estimado de tinta calculado por la cantidad de hojas impresas de la tirada.
+- **Energía eléctrica:** Tarifa por hora de máquinas/luz y cálculo automático según los minutos que tome el trabajo.
+- **Mano de obra:** Tarifa por hora de trabajo de taller y cálculo automático según los minutos dedicados a diseño, armado, corte y descarte.
+- **Margen de ganancia:** Control deslizable para definir la rentabilidad deseada (+50% mayorista, +150% estándar, +200% minorista).
+- **Plantillas rápidas de 1 clic:** Botones para cargar en un segundo las recetas habituales (Imanes x100, Stickers Die-Cut x100, Holográficos x50, Planchas A4 x10).
+- **Botón "Pasar a Presupuesto":** Traslada el producto terminado al presupuesto del cliente con un solo clic.
 
-### 2. Instalación de dependencias
-Abre una terminal en la carpeta del proyecto y ejecuta:
-```bash
-npm install
+### 2. Cotizador para el Cliente
+- **Privacidad total:** El cliente nunca ve los costos internos de tinta, luz ni materiales; solo ve la descripción del producto final terminado y su precio.
+- **Botón "Copiar para WhatsApp":** Genera un mensaje prolijo con emojis, detalle ordenado de productos, subtotales, notas de seña/entrega y datos de contacto listo para pegar en el chat.
+- **Imprimir / Guardar en PDF:** Vista previa con el logo oficial de Tiker, datos de Instagram (`@tiker_st`), WhatsApp y condiciones comerciales lista para imprimir o descargar en PDF.
+- **Descuentos y Recargos:** Opciones para aplicar descuentos o costos de envío en porcentaje o monto fijo.
+
+### 3. ABM Productos (Inventario)
+- Crear, editar y eliminar productos con control de stock y alertas cuando queda poco stock.
+- Filtros por categorías (Imanes, Stickers siluetados, Stickers UV, Planchas, Packaging, etc.).
+- Botón directo "Cotizar" para sumar cualquier producto del catálogo al presupuesto con un clic.
+
+### 4. Historial de Presupuestos
+- Registro de presupuestos emitidos con código secuencial (ej. `#COT-0001`).
+- Control de estados: *Pendiente*, *Aprobado*, *Entregado*, *Cancelado*.
+- Opciones para reimprimir, reenviar a WhatsApp o duplicar un presupuesto anterior.
+
+### 5. Copia de Seguridad & Configuración
+- Personalización de tarifas base de taller (costo de hora de mano de obra, hora de luz y tinta por hoja).
+- Descarga y restauración de copias de seguridad en formato JSON.
+
+---
+
+## 🚀 Cómo usar la aplicación
+
+### Opción 1: Con el Acceso Directo del Escritorio (Recomendado)
+Haz doble clic sobre el acceso directo **`Tiker - Cotizador`** que está en tu Escritorio de Windows. Se iniciará el servidor y se abrirá automáticamente en tu navegador.
+
+### Opción 2: Desde la Terminal
+```powershell
+cd "C:\Users\msuar\Desktop\ABM y Cotizador"
+npm.cmd run dev
 ```
-*(En Windows PowerShell, si tienes restricciones de políticas de ejecución de scripts, puedes usar `npm.cmd install`)*.
-
-### 3. Iniciar el servidor local
-```bash
-npm run dev
-```
-*(O `npm.cmd run dev`)*.
-
-La terminal te mostrará la dirección local, usualmente:
-👉 **`http://localhost:5173`**
-
-Abre esa URL en tu navegador y la aplicación estará lista para usar con datos de ejemplo pre-cargados.
+Luego abre en tu navegador: **`http://localhost:5173`**
 
 ---
 
-## 📦 Módulos y Funcionalidades
+## 🐙 Comandos de Git para el día a día
 
-### 1. Gestión de Productos (Inventario de Papelería)
-- **ABM Completo:** Crear, editar y eliminar productos (Cuadernos, Agendas, Stickers, Blocs de notas, Tarjetas, Cajas, etc.).
-- **Métricas de Ganancia en Tiempo Real:** Al ingresar el costo de insumos y el precio de venta sugerido, calcula automáticamente el margen de ganancia en monto monetario y en porcentaje sobre costo.
-- **Control de Stock:** Alertas visuales de stock bajo (menor o igual a 5 unidades) o agotado.
-- **Buscador & Filtros Rápidos:** Búsqueda en vivo por nombre o descripción, filtros por categorías predefinidas o personalizadas, y ordenamiento por precio, stock o ganancia.
-- **Acción Rápida de Cotización:** Botón "Cotizar" directo en cada tarjeta de producto para sumarlo al presupuesto en un solo clic.
-- **KPIs de Taller:** Muestra el número de productos únicos, unidades totales en stock, costo de insumos inmovilizado y valuación proyectada en venta.
+Para guardar y subir cambios a GitHub:
+```powershell
+# 1. Preparar archivos modificados
+git add .
 
-### 2. Generador de Presupuestos (Cotizador)
-- **Selector Dinámico:** Buscador rápido con vista previa de productos y precios para sumarlos con un clic.
-- **Ítem a Medida / Personalizado:** Permite cotizar trabajos especiales o servicios que no estén cargados en el inventario fijo (ej. encuadernaciones a medida, diseño gráfico especial, grabado láser).
-- **Cálculo Automático en Vivo:**
-  - Subtotal por cada línea de producto según cantidad y precio editable.
-  - Subtotal acumulado general.
-  - Descuentos opcionales (porcentaje `%` o monto fijo `$`).
-  - Recargos o costos de envío opcionales (porcentaje `%` o monto fijo `$`).
-  - Total final a cobrar.
-  - **Margen de Ganancia del Presupuesto:** Muestra al emprendedor cuánto dinero real gana con esa venta tras deducir costos de insumos.
-- **Datos del Cliente:** Nombre del cliente/empresa, contacto (WhatsApp/Instagram) y fecha de validez del presupuesto.
-- **Generación / Imprimir / Exportar a PDF:** 
-  - Vista previa limpia y elegante estilo recibo membretado.
-  - Estilos optimizados para impresión (`window.print()`), ocultando la interfaz de la aplicación para guardar un PDF profesional en A4 o recibo.
-- **Formateador para WhatsApp:** Botón que copia un mensaje estructurado con emojis, viñetas, detalle de productos, totales y datos de pago listo para enviar al cliente por chat.
+# 2. Guardar con mensaje
+git commit -m "Detalle de los cambios"
 
-### 3. Historial de Presupuestos
-- Guarda y lista automáticamente los presupuestos generados con código secuencial (ej. `#COT-0001`).
-- **Estados de Presupuesto:** Permite cambiar el estado de cada cotización entre *Pendiente*, *Aprobado*, *Entregado* y *Cancelado*.
-- **Métricas:** Conteo de presupuestos emitidos, aprobados y monto total de ventas confirmadas.
-- **Acciones:**
-  - Copiar mensaje de WhatsApp nuevamente.
-  - Ver comprobante / Reimprimir / Guardar PDF.
-  - Cargar/Duplicar en el cotizador para crear uno nuevo a partir de un cliente existente.
-  - Eliminar con confirmación de seguridad.
-
-### 4. Configuración del Taller & Respaldo de Datos
-- Personalización de nombre del taller, eslogan, WhatsApp, Instagram, símbolo de moneda y condiciones de venta predeterminadas (ej. 50% de seña para comenzar, tiempos de entrega).
-- **Copia de Seguridad (Backup):**
-  - **Exportar datos (JSON):** Descarga un archivo con todo tu catálogo, historial de presupuestos y configuración.
-  - **Restaurar datos:** Carga copias de seguridad previas en caso de cambiar de navegador o equipo.
-
----
-
-## 🛠️ Arquitectura y Estructura de Archivos
-
+# 3. Subir a GitHub
+git push
 ```
-ABM y Cotizador/
-├── index.html                   # Entry point con fuentes y estilos base
-├── package.json                 # Dependencias (React, Tailwind, Lucide)
-├── vite.config.js               # Configuración del bundler Vite
-├── tailwind.config.js           # Paleta de colores para papelería/taller
-├── postcss.config.js            # PostCSS para Tailwind
-├── README.md                    # Documentación y guía de uso
-└── src/
-    ├── main.jsx                 # Renderizado raíz de React
-    ├── App.jsx                  # Estado global, orquestación de pestañas y modales
-    ├── index.css                # Directivas Tailwind y estilos @media print
-    ├── constants/
-    │   └── defaultData.js       # Categorías, productos de muestra y datos por defecto
-    ├── services/
-    │   └── storageService.js    # Capa de abstracción de datos (localStorage -> Firestore ready)
-    ├── utils/
-    │   └── formatters.js        # Moneda, fechas y generador de mensajes WhatsApp
-    └── components/
-        ├── Navbar.jsx           # Barra de navegación, pestañas y badges
-        ├── common/
-        │   ├── ConfirmModal.jsx # Diálogo de confirmación para eliminar
-        │   └── Toast.jsx        # Alertas flotantes animadas
-        ├── products/
-        │   ├── ProductList.jsx  # Grilla de productos, KPIs, filtros y buscador
-        │   └── ProductModal.jsx # Formulario ABM con cálculo de márgenes
-        ├── quotes/
-        │   ├── QuoteBuilder.jsx # Constructor de presupuestos interactivo
-        │   └── QuotePreviewModal.jsx # Vista previa, impresión/PDF y copiar WhatsApp
-        ├── history/
-        │   └── QuoteHistory.jsx # Listado histórico de cotizaciones y estados
-        └── settings/
-            └── BusinessSettingsModal.jsx # Datos del negocio y backup JSON
-```
-
----
-
-## ☁️ Preparado para migrar a Firebase Firestore
-
-Toda la interacción con los datos se realiza a través de `src/services/storageService.js`. Todos los métodos (`getProducts`, `saveProduct`, `getQuotes`, `saveQuote`, etc.) devuelven `Promises` y mantienen firmas estándar.
-
-Para migrar a Firebase:
-1. Instala Firebase: `npm install firebase`
-2. Configura tu `firebaseConfig.js`.
-3. En `src/services/storageService.js`, reemplaza la lógica interna de `localStorage` por `getDocs`, `addDoc`, `updateDoc` y `deleteDoc` de Firestore sin tener que modificar ninguno de los componentes visuales de la aplicación.
+*(Repositorio: [https://github.com/Mashumadness/abm-y-cotizador](https://github.com/Mashumadness/abm-y-cotizador))*
