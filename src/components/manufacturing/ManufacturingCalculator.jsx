@@ -19,7 +19,8 @@ import {
   ShieldCheck,
   Tag,
   HelpCircle,
-  Edit2
+  Edit2,
+  X
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -28,6 +29,8 @@ export const ManufacturingCalculator = ({
   products = [], 
   workshopRates = { hourlyLaborRate: 6000, hourlyElectricityRate: 1800, inkCostPerSheet: 180 }, 
   onSaveRates, 
+  quickTemplates = [],
+  onSaveQuickTemplates,
   onSaveNewSupply, 
   onSendToQuote, 
   onSaveToProducts,
@@ -38,12 +41,24 @@ export const ManufacturingCalculator = ({
   const [quantity, setQuantity] = useState(100);
   const [marginPercent, setMarginPercent] = useState(150); // 150% ganancia por defecto
   
+  // Arma una fila de material a partir de un insumo del ABM (si existe)
+  const buildMaterialFromSupply = (rowId, supplyId, materialQuantity) => {
+    const supply = supplies.find(s => s.id === supplyId);
+    return {
+      id: rowId,
+      supplyId: supply?.id || '',
+      name: supply?.name || '',
+      quantity: materialQuantity,
+      unitCost: Number(supply?.unitCost) || 0
+    };
+  };
+
   // Materials used in this job
-  const [jobMaterials, setJobMaterials] = useState([
-    { id: '1', supplyId: supplies[0]?.id || 'sup-1', name: supplies[0]?.name || 'Lámina de Imán Flexible 0.4mm', quantity: 5, unitCost: supplies[0]?.unitCost || 450 },
-    { id: '2', supplyId: supplies[2]?.id || 'sup-3', name: supplies[2]?.name || 'Papel Autoadhesivo Fotográfico 135g', quantity: 5, unitCost: supplies[2]?.unitCost || 140 },
-    { id: '3', supplyId: supplies[4]?.id || 'sup-5', name: supplies[4]?.name || 'Film Laminado Protector Frío (Brillante)', quantity: 5, unitCost: supplies[4]?.unitCost || 90 },
-  ]);
+  const [jobMaterials, setJobMaterials] = useState(() => [
+    buildMaterialFromSupply('1', 'sup-1', 5),
+    buildMaterialFromSupply('2', 'sup-3', 5),
+    buildMaterialFromSupply('3', 'sup-5', 5),
+  ].filter(m => m.supplyId));
 
   // Operational variables for this specific job
   const [sheetsToPrint, setSheetsToPrint] = useState(5);
@@ -63,6 +78,8 @@ export const ManufacturingCalculator = ({
 
   const [ratesSavedNotice, setRatesSavedNotice] = useState(false);
   const [showPresetHelp, setShowPresetHelp] = useState(false);
+  const [isAddingTemplate, setIsAddingTemplate] = useState(false);
+  const [templateSearch, setTemplateSearch] = useState('');
   const [materialSearches, setMaterialSearches] = useState({});
 
   useEffect(() => {
@@ -99,54 +116,90 @@ export const ManufacturingCalculator = ({
     }
   };
 
-  // Quick Preset Handlers
-  const handleApplyPreset = (type) => {
-    if (type === 'imanes') {
-      setProductName('Imanes Personalizados Siluetados (Pack x100)');
-      setQuantity(100);
-      setSheetsToPrint(5);
-      setElectricityMinutes(30);
-      setLaborMinutes(45);
-      setMarginPercent(160);
-      setJobMaterials([
-        { id: '1', supplyId: 'sup-1', name: 'Lámina de Imán Flexible 0.4mm', quantity: 5, unitCost: 450 },
-        { id: '2', supplyId: 'sup-3', name: 'Papel Autoadhesivo Fotográfico 135g', quantity: 5, unitCost: 140 },
-        { id: '3', supplyId: 'sup-5', name: 'Film Laminado Protector Frío (Brillante)', quantity: 5, unitCost: 90 },
-      ]);
-    } else if (type === 'stickers-diecut') {
-      setProductName('Stickers Vinilo Siluetados Die-Cut 5cm (Pack x100)');
-      setQuantity(100);
-      setSheetsToPrint(4);
-      setElectricityMinutes(25);
-      setLaborMinutes(40);
-      setMarginPercent(180);
-      setJobMaterials([
-        { id: '1', supplyId: 'sup-2', name: 'Vinilo Autoadhesivo Blanco Glossy', quantity: 4, unitCost: 220 },
-        { id: '2', supplyId: 'sup-5', name: 'Film Laminado Protector Frío (Brillante)', quantity: 4, unitCost: 90 },
-      ]);
-    } else if (type === 'holograficos') {
-      setProductName('Stickers Holográficos Prisma 5cm (Pack x50)');
-      setQuantity(50);
-      setSheetsToPrint(2);
-      setElectricityMinutes(15);
-      setLaborMinutes(25);
-      setMarginPercent(200);
-      setJobMaterials([
-        { id: '1', supplyId: 'sup-4', name: 'Vinilo Holográfico Prisma', quantity: 2, unitCost: 380 },
-        { id: '2', supplyId: 'sup-5', name: 'Film Laminado Protector Frío (Brillante)', quantity: 2, unitCost: 90 },
-      ]);
-    } else if (type === 'planchas-a4') {
-      setProductName('Planchas A4 de Stickers Troquelados Kiss-Cut (Pack x10)');
-      setQuantity(10);
-      setSheetsToPrint(10);
-      setElectricityMinutes(20);
-      setLaborMinutes(30);
-      setMarginPercent(170);
-      setJobMaterials([
-        { id: '1', supplyId: 'sup-2', name: 'Vinilo Autoadhesivo Blanco Glossy', quantity: 10, unitCost: 220 },
-      ]);
-    }
+  // Carga los materiales de una plantilla (solo los insumos que siguen existiendo en el ABM)
+  const applyPresetMaterials = (presetRows) => {
+    const materials = presetRows
+      .map(([supplyId, materialQuantity], index) => buildMaterialFromSupply(`${index + 1}`, supplyId, materialQuantity))
+      .filter(m => m.supplyId);
+    setJobMaterials(materials);
+    setMaterialSearches({});
   };
+
+  // ==========================================
+  // PLANTILLAS DE 1 CLIC
+  // ==========================================
+  const applyPresetTemplate = (template) => {
+    setProductName(template.productName);
+    setQuantity(template.quantity);
+    setSheetsToPrint(template.sheetsToPrint);
+    setElectricityMinutes(template.electricityMinutes);
+    setLaborMinutes(template.laborMinutes);
+    setMarginPercent(template.marginPercent);
+    applyPresetMaterials(template.materials || []);
+  };
+
+  // Carga un producto del ABM como punto de partida del costeo
+  const applyProductTemplate = (product) => {
+    const inputs = product.manufacturingInputs || {};
+    const productCost = Number(product.cost) || 0;
+    const productPrice = Number(product.price) || 0;
+    const derivedMargin = productCost > 0 ? Math.round(((productPrice - productCost) / productCost) * 100) : 150;
+
+    setProductName(product.name);
+    setQuantity(Math.max(1, Number(product.manufacturingBreakdown?.qty) || 1));
+    setSheetsToPrint(Number(inputs.sheetsToPrint) || 0);
+    setElectricityMinutes(Number(inputs.electricityMinutes) || 0);
+    setLaborMinutes(Number(inputs.laborMinutes) || 0);
+    setMarginPercent(product.marginPercent ?? derivedMargin);
+    setJobMaterials((product.materials || []).map((material, index) => {
+      const supply = supplies.find(s => s.id === material.supplyId);
+      return {
+        id: `${index + 1}`,
+        supplyId: material.supplyId || '',
+        name: supply?.name || material.name || '',
+        quantity: Number(material.quantity) || 0,
+        unitCost: Number(supply?.unitCost ?? material.unitCost) || 0
+      };
+    }));
+    setMaterialSearches({});
+  };
+
+  const handleApplyTemplate = (template) => {
+    if (template.type === 'product') {
+      const product = products.find(p => p.id === template.productId);
+      if (product) applyProductTemplate(product);
+      return;
+    }
+    applyPresetTemplate(template);
+  };
+
+  const handleRemoveTemplate = (templateId) => {
+    onSaveQuickTemplates?.(quickTemplates.filter(t => t.id !== templateId));
+  };
+
+  const handleAddProductTemplate = (product) => {
+    const newTemplate = {
+      id: `tpl-${Date.now()}`,
+      type: 'product',
+      productId: product.id,
+      label: product.name
+    };
+    onSaveQuickTemplates?.([...quickTemplates, newTemplate]);
+    setIsAddingTemplate(false);
+    setTemplateSearch('');
+  };
+
+  const getTemplateLabel = (template) => {
+    if (template.type !== 'product') return template.label;
+    return products.find(p => p.id === template.productId)?.name || template.label;
+  };
+
+  // Productos del ABM que todavía no son plantilla
+  const availableProductsForTemplate = products.filter(product => {
+    const alreadyAdded = quickTemplates.some(t => t.type === 'product' && t.productId === product.id);
+    const matchesSearch = product.name.toLowerCase().includes(templateSearch.trim().toLowerCase());
+    return !alreadyAdded && matchesSearch;
+  });
 
   // Add material row
   const handleAddMaterialRow = () => {
@@ -164,16 +217,21 @@ export const ManufacturingCalculator = ({
     setMaterialSearches(prev => ({ ...prev, [id]: '' }));
   };
 
-  const handleSelectCatalogProduct = (index, product) => {
+  const handleSelectSupply = (index, supply) => {
     const updated = [...jobMaterials];
     updated[index] = {
       ...updated[index],
-      supplyId: product.id,
-      name: product.name,
-      unitCost: Number(product.cost) || 0
+      supplyId: supply.id,
+      name: supply.name,
+      unitCost: Number(supply.unitCost) || 0
     };
     setJobMaterials(updated);
-    setMaterialSearches(prev => ({ ...prev, [updated[index].id]: product.name }));
+    setMaterialSearches(prev => ({ ...prev, [updated[index].id]: supply.name }));
+  };
+
+  const filterSupplies = (query) => {
+    const normalizedQuery = (query || '').trim().toLowerCase();
+    return supplies.filter(supply => supply.name.toLowerCase().includes(normalizedQuery));
   };
 
   const handleUpdateMaterialRow = (index, field, value) => {
@@ -282,6 +340,21 @@ export const ManufacturingCalculator = ({
       price: Math.round(calculations.totalPrice),
       stock: 0,
       description: `Pack x${calculations.qty} fabricado con: ${jobMaterials.map(m => m.name).join(', ')}.`,
+      // Composición del producto: se recalcula si cambian los valores de los insumos
+      costMode: 'supplies',
+      materials: jobMaterials
+        .filter(m => m.supplyId || m.name)
+        .map(({ id, supplyId, name, quantity: materialQuantity, unitCost }) => ({
+          id, supplyId, name, quantity: Number(materialQuantity) || 0, unitCost: Number(unitCost) || 0
+        })),
+      extraCosts: Math.round(calculations.operationalCost + calculations.laborMinutesCost),
+      marginPercent: Number(marginPercent) || 0,
+      // Datos del trabajo para poder recargarlo como plantilla
+      manufacturingInputs: {
+        sheetsToPrint: Number(sheetsToPrint) || 0,
+        electricityMinutes: Number(electricityMinutes) || 0,
+        laborMinutes: Number(laborMinutes) || 0
+      },
       manufacturingBreakdown: {
         materialsCost: Math.round(calculations.materialsCost),
         operationalCost: Math.round(calculations.operationalCost),
@@ -319,31 +392,86 @@ export const ManufacturingCalculator = ({
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button
-              onClick={() => handleApplyPreset('imanes')}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-brand-200 border border-slate-700 transition-colors shadow-xs"
-            >
-              🧲 Imanes x100
-            </button>
-            <button
-              onClick={() => handleApplyPreset('stickers-diecut')}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-brand-200 border border-slate-700 transition-colors shadow-xs"
-            >
-              ✂️ Stickers Die-Cut x100
-            </button>
-            <button
-              onClick={() => handleApplyPreset('holograficos')}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-brand-200 border border-slate-700 transition-colors shadow-xs"
-            >
-              ✨ Holográficos x50
-            </button>
-            <button
-              onClick={() => handleApplyPreset('planchas-a4')}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-brand-200 border border-slate-700 transition-colors shadow-xs"
-            >
-              📄 Planchas A4 x10
-            </button>
+          <div className="flex flex-wrap items-center md:justify-end gap-1.5">
+            {quickTemplates.map(template => {
+              const isMissingProduct = template.type === 'product' && !products.some(p => p.id === template.productId);
+              return (
+                <div key={template.id} className="relative group">
+                  <button
+                    type="button"
+                    onClick={() => handleApplyTemplate(template)}
+                    disabled={isMissingProduct}
+                    title={isMissingProduct ? 'El producto ya no existe en el ABM' : 'Cargar plantilla'}
+                    className={`px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold border border-slate-700 transition-colors shadow-xs max-w-[220px] truncate ${
+                      isMissingProduct ? 'text-slate-500 line-through cursor-not-allowed' : 'text-brand-200'
+                    }`}
+                  >
+                    {template.type === 'product' && '📦 '}{getTemplateLabel(template)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTemplate(template.id)}
+                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-600 hover:bg-rose-500 text-white items-center justify-center shadow-md hidden group-hover:flex group-focus-within:flex"
+                    title="Quitar de la lista"
+                    aria-label={`Quitar ${getTemplateLabel(template)}`}
+                  >
+                    <X className="w-2.5 h-2.5 stroke-[3]" />
+                  </button>
+                </div>
+              );
+            })}
+
+            {/* Agregar plantilla desde ABM Productos */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsAddingTemplate(!isAddingTemplate)}
+                className="px-3 py-1.5 rounded-xl border border-dashed border-brand-400/70 hover:bg-slate-800 text-xs font-bold text-brand-300 transition-colors flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Agregar
+              </button>
+
+              {isAddingTemplate && (
+                <>
+                  {/* Capa para cerrar al hacer clic afuera */}
+                  <div className="fixed inset-0 z-30" onClick={() => { setIsAddingTemplate(false); setTemplateSearch(''); }} />
+                  <div className="absolute z-40 right-0 mt-2 w-72 bg-white text-slate-800 rounded-2xl shadow-2xl border border-slate-200 p-2">
+                    <div className="relative mb-2">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        autoFocus
+                        value={templateSearch}
+                        onChange={(e) => setTemplateSearch(e.target.value)}
+                        placeholder="Buscar en ABM Productos..."
+                        className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      />
+                    </div>
+                    <div className="max-h-60 overflow-y-auto">
+                      {availableProductsForTemplate.slice(0, 20).map(product => (
+                        <button
+                          key={product.id}
+                          type="button"
+                          onClick={() => handleAddProductTemplate(product)}
+                          className="w-full px-3 py-2 text-left rounded-lg hover:bg-brand-50"
+                        >
+                          <span className="block text-xs font-semibold text-slate-800">{product.name}</span>
+                          <span className="block text-[10px] text-slate-500">
+                            {product.category || 'Sin categoría'} · Venta: {formatCurrency(product.price, currencySymbol)}
+                          </span>
+                        </button>
+                      ))}
+                      {availableProductsForTemplate.length === 0 && (
+                        <p className="px-3 py-3 text-xs text-slate-500">
+                          {products.length === 0 ? 'No hay productos en el ABM.' : 'No hay productos para agregar.'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -354,6 +482,9 @@ export const ManufacturingCalculator = ({
             <strong>💡 ¿Cómo funcionan las plantillas de 1 clic?</strong>
             <p className="mt-1">
               Al hacer clic en cualquiera de ellas (ej. <em>Imanes x100</em> o <em>Stickers Die-Cut x100</em>), se cargan automáticamente en el formulario los materiales habituales, la cantidad de hojas y los minutos estimados de taller. Puedes utilizarlas como base y luego modificar cualquier valor.
+            </p>
+            <p className="mt-1">
+              Con <strong>+ Agregar</strong> sumás un producto del ABM Productos como plantilla (carga sus insumos, cantidad y margen). Pasá el mouse sobre una plantilla y tocá la <strong>✕</strong> para quitarla de la lista.
             </p>
           </div>
           <button
@@ -439,37 +570,29 @@ export const ManufacturingCalculator = ({
                         <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
                         <input
                           type="text"
-                          value={materialSearches[mat.id] ?? (products.find(p => p.id === mat.supplyId)?.name || mat.name || '')}
+                          value={materialSearches[mat.id] ?? mat.name ?? ''}
                           onChange={(e) => setMaterialSearches(prev => ({ ...prev, [mat.id]: e.target.value }))}
-                          placeholder="Buscar insumo en ABM de productos..."
+                          placeholder="Buscar insumo en ABM de insumos..."
                           className="w-full pl-9 pr-3 py-2 text-xs font-semibold bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400"
                         />
                       </div>
-                      {(materialSearches[mat.id] || '').trim().length > 0 && (materialSearches[mat.id] || '').trim().toLowerCase() !== (products.find(p => p.id === mat.supplyId)?.name || '').trim().toLowerCase() && (
+                      {(materialSearches[mat.id] || '').trim().length > 0 && (materialSearches[mat.id] || '').trim().toLowerCase() !== (mat.name || '').trim().toLowerCase() && (
                         <div className="absolute z-20 top-full left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl">
-                          {products.filter(product => {
-                            const query = (materialSearches[mat.id] || '').trim().toLowerCase();
-                            return product.name.toLowerCase().includes(query) ||
-                              (product.category || '').toLowerCase().includes(query);
-                          }).slice(0, 12).map(product => (
+                          {filterSupplies(materialSearches[mat.id]).slice(0, 12).map(supply => (
                             <button
-                              key={product.id}
+                              key={supply.id}
                               type="button"
-                              onClick={() => handleSelectCatalogProduct(index, product)}
+                              onClick={() => handleSelectSupply(index, supply)}
                               className="w-full px-3 py-2 text-left hover:bg-brand-50 border-b border-slate-100 last:border-0"
                             >
-                              <span className="block text-xs font-semibold text-slate-800">{product.name}</span>
+                              <span className="block text-xs font-semibold text-slate-800">{supply.name}</span>
                               <span className="block text-[10px] text-slate-500">
-                                {product.category || 'Sin categoría'} · Costo: {formatCurrency(product.cost, currencySymbol)}
+                                Paquete x{supply.packageQuantity} · Valor unitario: {formatCurrency(supply.unitCost, currencySymbol)}
                               </span>
                             </button>
                           ))}
-                          {products.filter(product => {
-                            const query = (materialSearches[mat.id] || '').trim().toLowerCase();
-                            return product.name.toLowerCase().includes(query) ||
-                              (product.category || '').toLowerCase().includes(query);
-                          }).length === 0 && (
-                            <p className="px-3 py-3 text-xs text-slate-500">No se encontraron productos en el ABM.</p>
+                          {filterSupplies(materialSearches[mat.id]).length === 0 && (
+                            <p className="px-3 py-3 text-xs text-slate-500">No se encontraron insumos en el ABM.</p>
                           )}
                         </div>
                       )}
@@ -483,7 +606,7 @@ export const ManufacturingCalculator = ({
                     <div className="flex items-center gap-3">
                       <div className="w-24">
                         <label className="block text-[10px] font-bold text-slate-400 uppercase">
-                          Hojas/Cant.
+                          Cantidad
                         </label>
                         <input
                           type="number"

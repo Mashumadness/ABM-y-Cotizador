@@ -299,6 +299,13 @@ export const ProductList = ({
                     {product.name}
                   </h3>
 
+                  {product.costMode === 'supplies' && (product.materials || []).length > 0 && (
+                    <p className="text-[11px] text-indigo-700 font-semibold mt-1 flex items-center gap-1" title={(product.materials || []).map(m => `${m.name} x${m.quantity}`).join('\n')}>
+                      <Layers className="w-3 h-3" />
+                      Armado con {product.materials.length} insumo{product.materials.length > 1 ? 's' : ''} · costo automático
+                    </p>
+                  )}
+
                   {product.description && (
                     <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
                       {product.description}

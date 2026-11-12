@@ -74,55 +74,51 @@ export const INITIAL_PRODUCTS = [
   }
 ];
 
+// Insumos: el valor unitario (por hoja / unidad) se calcula como precio del paquete / cantidad por paquete.
 export const INITIAL_SUPPLIES = [
+  { id: 'sup-1', name: 'Lámina de Imán Flexible 0.4mm (A4)', packageQuantity: 10, packagePrice: 4500, unitCost: 450 },
+  { id: 'sup-2', name: 'Vinilo Autoadhesivo Blanco Glossy (A4)', packageQuantity: 20, packagePrice: 4400, unitCost: 220 },
+  { id: 'sup-3', name: 'Papel Autoadhesivo Fotográfico 135g (A4)', packageQuantity: 100, packagePrice: 14000, unitCost: 140 },
+  { id: 'sup-4', name: 'Vinilo Holográfico Prisma (A4)', packageQuantity: 10, packagePrice: 3800, unitCost: 380 },
+  { id: 'sup-5', name: 'Film Laminado Protector Frío Brillante (A4)', packageQuantity: 50, packagePrice: 4500, unitCost: 90 },
+  { id: 'sup-6', name: 'Film Laminado Mate Soft-Touch (A4)', packageQuantity: 50, packagePrice: 5500, unitCost: 110 },
+  { id: 'sup-7', name: 'Papel Ilustración 300g (A4)', packageQuantity: 100, packagePrice: 12000, unitCost: 120 }
+];
+
+// Plantillas de 1 clic de Costos de productos.
+// type 'preset': trabajo predefinido. type 'product': referencia a un producto del ABM (productId).
+export const INITIAL_QUICK_TEMPLATES = [
   {
-    id: 'sup-1',
-    name: 'Lámina de Imán Flexible 0.4mm',
-    unit: 'Hoja A4',
-    unitCost: 450,
-    category: 'Sustrato Base'
+    id: 'tpl-imanes',
+    type: 'preset',
+    label: '🧲 Imanes x100',
+    productName: 'Imanes Personalizados Siluetados (Pack x100)',
+    quantity: 100, sheetsToPrint: 5, electricityMinutes: 30, laborMinutes: 45, marginPercent: 160,
+    materials: [['sup-1', 5], ['sup-3', 5], ['sup-5', 5]]
   },
   {
-    id: 'sup-2',
-    name: 'Vinilo Autoadhesivo Blanco Glossy',
-    unit: 'Hoja A4',
-    unitCost: 220,
-    category: 'Sustrato de Impresión'
+    id: 'tpl-stickers-diecut',
+    type: 'preset',
+    label: '✂️ Stickers Die-Cut x100',
+    productName: 'Stickers Vinilo Siluetados Die-Cut 5cm (Pack x100)',
+    quantity: 100, sheetsToPrint: 4, electricityMinutes: 25, laborMinutes: 40, marginPercent: 180,
+    materials: [['sup-2', 4], ['sup-5', 4]]
   },
   {
-    id: 'sup-3',
-    name: 'Papel Autoadhesivo Fotográfico 135g',
-    unit: 'Hoja A4',
-    unitCost: 140,
-    category: 'Sustrato de Impresión'
+    id: 'tpl-holograficos',
+    type: 'preset',
+    label: '✨ Holográficos x50',
+    productName: 'Stickers Holográficos Prisma 5cm (Pack x50)',
+    quantity: 50, sheetsToPrint: 2, electricityMinutes: 15, laborMinutes: 25, marginPercent: 200,
+    materials: [['sup-4', 2], ['sup-5', 2]]
   },
   {
-    id: 'sup-4',
-    name: 'Vinilo Holográfico Prisma',
-    unit: 'Hoja A4',
-    unitCost: 380,
-    category: 'Sustrato de Impresión'
-  },
-  {
-    id: 'sup-5',
-    name: 'Film Laminado Protector Frío (Brillante)',
-    unit: 'Hoja A4',
-    unitCost: 90,
-    category: 'Laminado & Acabado'
-  },
-  {
-    id: 'sup-6',
-    name: 'Film Laminado Mate Soft-Touch',
-    unit: 'Hoja A4',
-    unitCost: 110,
-    category: 'Laminado & Acabado'
-  },
-  {
-    id: 'sup-7',
-    name: 'Papel Ilustración 300g (Tags y Tarjetas)',
-    unit: 'Hoja A4',
-    unitCost: 120,
-    category: 'Sustrato Base'
+    id: 'tpl-planchas-a4',
+    type: 'preset',
+    label: '📄 Planchas A4 x10',
+    productName: 'Planchas A4 de Stickers Troquelados Kiss-Cut (Pack x10)',
+    quantity: 10, sheetsToPrint: 10, electricityMinutes: 20, laborMinutes: 30, marginPercent: 170,
+    materials: [['sup-2', 10]]
   }
 ];
 

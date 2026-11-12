@@ -9,15 +9,18 @@ import {
   INITIAL_PRODUCTS, 
   DEFAULT_BUSINESS_INFO, 
   INITIAL_SUPPLIES, 
-  INITIAL_WORKSHOP_RATES 
+  INITIAL_WORKSHOP_RATES,
+  INITIAL_QUICK_TEMPLATES
 } from '../constants/defaultData';
+import { normalizeSupply } from '../utils/costing';
 
 const KEYS = {
   PRODUCTS: 'tiker_products_v2',
   QUOTES: 'tiker_quotes_v2',
   BUSINESS: 'tiker_business_v2',
   SUPPLIES: 'tiker_supplies_v2',
-  RATES: 'tiker_rates_v2'
+  RATES: 'tiker_rates_v2',
+  TEMPLATES: 'tiker_quick_templates_v1'
 };
 
 export const storageService = {
@@ -80,6 +83,17 @@ export const storageService = {
     }
   },
 
+  // Reemplaza la lista completa (usado al recalcular costos cuando cambia un insumo)
+  saveAllProducts: async (products) => {
+    try {
+      localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(products));
+      return products;
+    } catch (error) {
+      console.error('Error al guardar productos:', error);
+      throw error;
+    }
+  },
+
   // ==========================================
   // INSUMOS & MATERIALES DE PRODUCCIÓN
   // ==========================================
@@ -90,7 +104,8 @@ export const storageService = {
         localStorage.setItem(KEYS.SUPPLIES, JSON.stringify(INITIAL_SUPPLIES));
         return INITIAL_SUPPLIES;
       }
-      return JSON.parse(data);
+      // Normaliza insumos guardados con el formato anterior (unit / unitCost / category)
+      return JSON.parse(data).map(normalizeSupply);
     } catch (error) {
       console.error('Error al obtener insumos:', error);
       return INITIAL_SUPPLIES;
@@ -100,11 +115,13 @@ export const storageService = {
   saveSupply: async (supplyData) => {
     try {
       const current = await storageService.getSupplies();
-      const newSupply = {
+      const newSupply = normalizeSupply({
         ...supplyData,
-        id: supplyData.id || `sup-${Date.now()}`
-      };
-      const updated = [...current, newSupply];
+        id: supplyData.id || `sup-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        createdAt: supplyData.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      const updated = [newSupply, ...current];
       localStorage.setItem(KEYS.SUPPLIES, JSON.stringify(updated));
       return newSupply;
     } catch (error) {
@@ -116,9 +133,10 @@ export const storageService = {
   updateSupply: async (supply) => {
     try {
       const current = await storageService.getSupplies();
-      const updated = current.map(s => (s.id === supply.id ? supply : s));
+      const normalized = normalizeSupply({ ...supply, updatedAt: new Date().toISOString() });
+      const updated = current.map(s => (s.id === supply.id ? normalized : s));
       localStorage.setItem(KEYS.SUPPLIES, JSON.stringify(updated));
-      return supply;
+      return normalized;
     } catch (error) {
       console.error('Error al actualizar insumo:', error);
       throw error;
@@ -133,6 +151,29 @@ export const storageService = {
       return true;
     } catch (error) {
       console.error('Error al eliminar insumo:', error);
+      throw error;
+    }
+  },
+
+  // ==========================================
+  // PLANTILLAS DE 1 CLIC (Costos de productos)
+  // ==========================================
+  getQuickTemplates: async () => {
+    try {
+      const data = localStorage.getItem(KEYS.TEMPLATES);
+      return data ? JSON.parse(data) : INITIAL_QUICK_TEMPLATES;
+    } catch (error) {
+      console.error('Error al obtener plantillas:', error);
+      return INITIAL_QUICK_TEMPLATES;
+    }
+  },
+
+  saveQuickTemplates: async (templates) => {
+    try {
+      localStorage.setItem(KEYS.TEMPLATES, JSON.stringify(templates));
+      return templates;
+    } catch (error) {
+      console.error('Error al guardar plantillas:', error);
       throw error;
     }
   },
@@ -252,6 +293,7 @@ export const storageService = {
     const business = await storageService.getBusinessInfo();
     const supplies = await storageService.getSupplies();
     const rates = await storageService.getWorkshopRates();
+    const quickTemplates = await storageService.getQuickTemplates();
     return {
       version: '2.0',
       exportedAt: new Date().toISOString(),
@@ -259,7 +301,8 @@ export const storageService = {
       quotes,
       business,
       supplies,
-      rates
+      rates,
+      quickTemplates
     };
   },
 
@@ -281,6 +324,9 @@ export const storageService = {
     }
     if (importedData.rates && typeof importedData.rates === 'object') {
       localStorage.setItem(KEYS.RATES, JSON.stringify(importedData.rates));
+    }
+    if (importedData.quickTemplates && Array.isArray(importedData.quickTemplates)) {
+      localStorage.setItem(KEYS.TEMPLATES, JSON.stringify(importedData.quickTemplates));
     }
     return true;
   }

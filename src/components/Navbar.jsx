@@ -7,13 +7,15 @@ import {
   Sparkles,
   HardDrive,
   Wrench,
-  FileText
+  FileText,
+  Layers
 } from 'lucide-react';
 
 export const Navbar = ({ 
   activeTab, 
   setActiveTab, 
   productCount = 0, 
+  supplyCount = 0,
   quoteItemsCount = 0, 
   historyCount = 0,
   businessInfo,
@@ -86,6 +88,26 @@ export const Navbar = ({
               )}
             </button>
 
+            {/* ABM Insumos */}
+            <button
+              onClick={() => setActiveTab('supplies')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ${
+                activeTab === 'supplies'
+                  ? 'bg-white text-brand-700 shadow-xs shadow-slate-200'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              <span>ABM Insumos</span>
+              {supplyCount > 0 && (
+                <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-medium ${
+                  activeTab === 'supplies' ? 'bg-brand-100 text-brand-800' : 'bg-slate-200 text-slate-700'
+                }`}>
+                  {supplyCount}
+                </span>
+              )}
+            </button>
+
             {/* Historial */}
             <button
               onClick={() => setActiveTab('history')}
@@ -153,6 +175,15 @@ export const Navbar = ({
           >
             <Package className="w-4 h-4" />
             <span>ABM Productos</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('supplies')}
+            className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg font-bold ${
+              activeTab === 'supplies' ? 'text-brand-600 bg-brand-50' : 'text-slate-500'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>ABM Insumos</span>
           </button>
           <button
             onClick={() => setActiveTab('history')}

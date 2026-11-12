@@ -8,31 +8,52 @@
   }
 }
 
+/* Copia del presupuesto para imprimir: oculta en pantalla */
+.print-root {
+  display: none;
+}
+
 /* Print optimizations for receipts / quotes */
 @media print {
+  /* Margen 0: el navegador deja de agregar fecha, título y URL en la hoja */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  html,
   body {
     background: white !important;
     color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
   }
-  
+
+  /* Al imprimir solo se muestra el documento del presupuesto */
+  #root,
   .no-print {
     display: none !important;
   }
-  
+
+  .print-root {
+    display: block !important;
+    width: 100%;
+    padding: 1.4cm 1.6cm;
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   .print-only {
     display: block !important;
   }
 
-  .print-container {
-    padding: 0 !important;
-    margin: 0 !important;
-    max-width: 100% !important;
-    box-shadow: none !important;
-    border: none !important;
-  }
-
-  @page {
-    margin: 1.5cm;
-    size: auto;
+  /* Evita cortar filas o bloques entre páginas */
+  .quote-document tr,
+  .quote-document .avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

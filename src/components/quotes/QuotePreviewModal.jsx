@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, 
   Printer, 
@@ -29,6 +30,175 @@ const InstagramIcon = ({ className = "w-3.5 h-3.5" }) => (
     <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
     <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
   </svg>
+);
+
+// Documento del presupuesto (se usa en la vista previa y en la copia de impresión)
+const QuoteDocument = ({ quote, businessInfo, symbol }) => (
+  <div className="quote-document">
+      {/* Header Membrete */}
+      <div className="border-b-2 border-slate-900 pb-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div>
+            <img 
+              src={`${import.meta.env.BASE_URL}logo-tiker.png`} 
+              alt="Tiker Logo" 
+              className="h-16 w-auto object-contain mb-1.5 print:h-14" 
+            />
+            <p className="text-xs text-slate-600 mt-1 whitespace-pre-line font-medium leading-relaxed">
+              {businessInfo?.tagline || 'Stickers UV y papelería creativa. Packs, pizarras y más.\nPersonalizados para tu emprendimiento 💛'}
+            </p>
+            
+            <div className="text-xs text-slate-600 mt-2.5 space-y-1">
+              {businessInfo?.whatsapp && (
+                <div className="flex items-center gap-1.5 font-medium">
+                  <Phone className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{businessInfo.whatsapp}</span>
+                </div>
+              )}
+              {businessInfo?.instagram && (
+                <div className="flex items-center gap-1.5 font-medium">
+                  <InstagramIcon className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{businessInfo.instagram}</span>
+                </div>
+              )}
+              {businessInfo?.address && (
+                <p className="text-slate-400">{businessInfo.address}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Code & Dates */}
+          <div className="sm:text-right bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-0 border-slate-100">
+            <div className="inline-block bg-slate-900 text-white font-mono font-bold text-xs px-2.5 py-1 rounded-md mb-2">
+              #{quote.code || 'COTIZACION'}
+            </div>
+            <div className="text-xs text-slate-600 space-y-1">
+              <div>
+                <span className="text-slate-400 font-medium">Fecha de Emisión: </span>
+                <strong className="text-slate-800">{formatDate(quote.createdAt || new Date())}</strong>
+              </div>
+              {quote.validUntil && (
+                <div>
+                  <span className="text-slate-400 font-medium">Válido hasta: </span>
+                  <strong className="text-slate-800">{formatDate(quote.validUntil)}</strong>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Datos del Cliente */}
+        <div className="mt-6 pt-4 border-t border-slate-200/60 bg-brand-50/40 p-3.5 rounded-xl">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+            Presupuesto para:
+          </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-sm">
+            <div className="font-bold text-slate-900 flex items-center gap-2">
+              <User className="w-4 h-4 text-brand-600" />
+              <span>{quote.clientName || 'Cliente Particular'}</span>
+            </div>
+            {quote.clientContact && (
+              <div className="text-xs text-slate-600 flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-slate-400" />
+                <span>{quote.clientContact}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Tabla de Productos / Ítems */}
+      <div className="mb-6">
+        <table className="w-full text-left text-xs sm:text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 text-slate-400 uppercase text-[11px] font-bold">
+              <th className="pb-2">Descripción</th>
+              <th className="pb-2 text-center w-16">Cant.</th>
+              <th className="pb-2 text-right w-24">Unitario</th>
+              <th className="pb-2 text-right w-24">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {quote.items.map((item, idx) => {
+              const itemPrice = Number(item.price) || 0;
+              const itemQty = Number(item.quantity) || 1;
+              const rowTotal = itemPrice * itemQty;
+
+              return (
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="py-2.5 pr-2">
+                    <span className="font-semibold text-slate-800 block">{item.name}</span>
+                    {item.notes && (
+                      <span className="text-xs text-slate-400 italic block mt-0.5">{item.notes}</span>
+                    )}
+                  </td>
+                  <td className="py-2.5 text-center font-bold text-slate-700">
+                    {itemQty}
+                  </td>
+                  <td className="py-2.5 text-right text-slate-600">
+                    {formatCurrency(itemPrice, symbol)}
+                  </td>
+                  <td className="py-2.5 text-right font-bold text-slate-800">
+                    {formatCurrency(rowTotal, symbol)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Totales y Descuentos */}
+      <div className="avoid-break flex flex-col sm:flex-row justify-between gap-6 pt-4 border-t border-slate-200">
+        {/* Notas / Condiciones */}
+        <div className="flex-1 text-xs text-slate-500">
+          {quote.notes && (
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <span className="font-bold text-slate-700 block mb-1 text-[11px] uppercase tracking-wider">
+                Condiciones & Entrega:
+              </span>
+              <p className="whitespace-pre-line leading-relaxed text-slate-600">{quote.notes}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Desglose Numérico */}
+        <div className="w-full sm:w-64 space-y-2 text-xs sm:text-sm">
+          <div className="flex items-center justify-between text-slate-600">
+            <span>Subtotal:</span>
+            <span className="font-semibold">{formatCurrency(quote.subtotal, symbol)}</span>
+          </div>
+
+          {quote.discount && Number(quote.discount.value) > 0 && (
+            <div className="flex items-center justify-between text-emerald-700">
+              <span>
+                Descuento {quote.discount.type === 'percentage' ? `(${quote.discount.value}%)` : ''}:
+              </span>
+              <span className="font-semibold">-{formatCurrency(quote.discount.amount, symbol)}</span>
+            </div>
+          )}
+
+          {quote.surcharge && Number(quote.surcharge.value) > 0 && (
+            <div className="flex items-center justify-between text-slate-700">
+              <span>
+                Recargo / Envío {quote.surcharge.type === 'percentage' ? `(${quote.surcharge.value}%)` : ''}:
+              </span>
+              <span className="font-semibold">+{formatCurrency(quote.surcharge.amount, symbol)}</span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-2 border-t-2 border-slate-900 text-base sm:text-lg font-black text-slate-900">
+            <span>TOTAL:</span>
+            <span className="text-brand-700">{formatCurrency(quote.total, symbol)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Pie de página del presupuesto */}
+      <div className="mt-8 pt-4 border-t border-slate-100 text-center text-xs text-slate-400 font-medium">
+        <p>¡Gracias por confiar en nuestro trabajo!</p>
+      </div>
+  </div>
 );
 
 export const QuotePreviewModal = ({ 
@@ -69,7 +239,7 @@ export const QuotePreviewModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+    <div className="no-print fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-100 overflow-hidden my-4">
         {/* Actions Bar (Hidden when printing) */}
         <div className="no-print bg-slate-900 text-white p-4 flex flex-wrap items-center justify-between gap-3">
@@ -132,173 +302,19 @@ export const QuotePreviewModal = ({
           </div>
         </div>
 
-        {/* Printable Receipt Container */}
-        <div className="p-6 sm:p-10 max-h-[80vh] overflow-y-auto print:max-h-none print:overflow-visible print:p-0 print-container">
-          {/* Header Membrete */}
-          <div className="border-b-2 border-slate-900 pb-6 mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-              <div>
-                <img 
-                  src={`${import.meta.env.BASE_URL}logo-tiker.png`} 
-                  alt="Tiker Logo" 
-                  className="h-16 w-auto object-contain mb-1.5 print:h-14" 
-                />
-                <p className="text-xs text-slate-600 mt-1 whitespace-pre-line font-medium leading-relaxed">
-                  {businessInfo?.tagline || 'Stickers UV y papelería creativa. Packs, pizarras y más.\nPersonalizados para tu emprendimiento 💛'}
-                </p>
-                
-                <div className="text-xs text-slate-600 mt-2.5 space-y-1">
-                  {businessInfo?.whatsapp && (
-                    <div className="flex items-center gap-1.5 font-medium">
-                      <Phone className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{businessInfo.whatsapp}</span>
-                    </div>
-                  )}
-                  {businessInfo?.instagram && (
-                    <div className="flex items-center gap-1.5 font-medium">
-                      <InstagramIcon className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{businessInfo.instagram}</span>
-                    </div>
-                  )}
-                  {businessInfo?.address && (
-                    <p className="text-slate-400">{businessInfo.address}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Code & Dates */}
-              <div className="sm:text-right bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-0 border-slate-100">
-                <div className="inline-block bg-slate-900 text-white font-mono font-bold text-xs px-2.5 py-1 rounded-md mb-2">
-                  #{quote.code || 'COTIZACION'}
-                </div>
-                <div className="text-xs text-slate-600 space-y-1">
-                  <div>
-                    <span className="text-slate-400 font-medium">Fecha de Emisión: </span>
-                    <strong className="text-slate-800">{formatDate(quote.createdAt || new Date())}</strong>
-                  </div>
-                  {quote.validUntil && (
-                    <div>
-                      <span className="text-slate-400 font-medium">Válido hasta: </span>
-                      <strong className="text-slate-800">{formatDate(quote.validUntil)}</strong>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Datos del Cliente */}
-            <div className="mt-6 pt-4 border-t border-slate-200/60 bg-brand-50/40 p-3.5 rounded-xl">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Presupuesto para:
-              </span>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-sm">
-                <div className="font-bold text-slate-900 flex items-center gap-2">
-                  <User className="w-4 h-4 text-brand-600" />
-                  <span>{quote.clientName || 'Cliente Particular'}</span>
-                </div>
-                {quote.clientContact && (
-                  <div className="text-xs text-slate-600 flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{quote.clientContact}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Tabla de Productos / Ítems */}
-          <div className="mb-6">
-            <table className="w-full text-left text-xs sm:text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-400 uppercase text-[11px] font-bold">
-                  <th className="pb-2">Descripción</th>
-                  <th className="pb-2 text-center w-16">Cant.</th>
-                  <th className="pb-2 text-right w-24">Unitario</th>
-                  <th className="pb-2 text-right w-24">Subtotal</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {quote.items.map((item, idx) => {
-                  const itemPrice = Number(item.price) || 0;
-                  const itemQty = Number(item.quantity) || 1;
-                  const rowTotal = itemPrice * itemQty;
-
-                  return (
-                    <tr key={idx} className="hover:bg-slate-50/50">
-                      <td className="py-2.5 pr-2">
-                        <span className="font-semibold text-slate-800 block">{item.name}</span>
-                        {item.notes && (
-                          <span className="text-xs text-slate-400 italic block mt-0.5">{item.notes}</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 text-center font-bold text-slate-700">
-                        {itemQty}
-                      </td>
-                      <td className="py-2.5 text-right text-slate-600">
-                        {formatCurrency(itemPrice, symbol)}
-                      </td>
-                      <td className="py-2.5 text-right font-bold text-slate-800">
-                        {formatCurrency(rowTotal, symbol)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Totales y Descuentos */}
-          <div className="flex flex-col sm:flex-row justify-between gap-6 pt-4 border-t border-slate-200">
-            {/* Notas / Condiciones */}
-            <div className="flex-1 text-xs text-slate-500">
-              {quote.notes && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="font-bold text-slate-700 block mb-1 text-[11px] uppercase tracking-wider">
-                    Condiciones & Entrega:
-                  </span>
-                  <p className="whitespace-pre-line leading-relaxed text-slate-600">{quote.notes}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Desglose Numérico */}
-            <div className="w-full sm:w-64 space-y-2 text-xs sm:text-sm">
-              <div className="flex items-center justify-between text-slate-600">
-                <span>Subtotal:</span>
-                <span className="font-semibold">{formatCurrency(quote.subtotal, symbol)}</span>
-              </div>
-
-              {quote.discount && Number(quote.discount.value) > 0 && (
-                <div className="flex items-center justify-between text-emerald-700">
-                  <span>
-                    Descuento {quote.discount.type === 'percentage' ? `(${quote.discount.value}%)` : ''}:
-                  </span>
-                  <span className="font-semibold">-{formatCurrency(quote.discount.amount, symbol)}</span>
-                </div>
-              )}
-
-              {quote.surcharge && Number(quote.surcharge.value) > 0 && (
-                <div className="flex items-center justify-between text-slate-700">
-                  <span>
-                    Recargo / Envío {quote.surcharge.type === 'percentage' ? `(${quote.surcharge.value}%)` : ''}:
-                  </span>
-                  <span className="font-semibold">+{formatCurrency(quote.surcharge.amount, symbol)}</span>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between pt-2 border-t-2 border-slate-900 text-base sm:text-lg font-black text-slate-900">
-                <span>TOTAL:</span>
-                <span className="text-brand-700">{formatCurrency(quote.total, symbol)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Pie de página del presupuesto */}
-          <div className="mt-8 pt-4 border-t border-slate-100 text-center text-xs text-slate-400 font-medium">
-            <p>¡Gracias por confiar en nuestro trabajo!</p>
-          </div>
+        {/* Vista previa en pantalla */}
+        <div className="p-6 sm:p-10 max-h-[80vh] overflow-y-auto">
+          <QuoteDocument quote={quote} businessInfo={businessInfo} symbol={symbol} />
         </div>
       </div>
+
+      {/* Copia exclusiva para imprimir: se monta directo en <body> para no arrastrar el resto de la app */}
+      {createPortal(
+        <div className="print-root">
+          <QuoteDocument quote={quote} businessInfo={businessInfo} symbol={symbol} />
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

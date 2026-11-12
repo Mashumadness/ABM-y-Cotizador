@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Navbar } from './components/Navbar';
 import { ProductList } from './components/products/ProductList';
 import { ProductModal } from './components/products/ProductModal';
+import { SupplyList } from './components/supplies/SupplyList';
+import { SupplyModal } from './components/supplies/SupplyModal';
 import { QuoteBuilder } from './components/quotes/QuoteBuilder';
 import { QuoteHistory } from './components/history/QuoteHistory';
 import { ManufacturingCalculator } from './components/manufacturing/ManufacturingCalculator';
@@ -9,6 +11,7 @@ import { BusinessSettingsModal } from './components/settings/BusinessSettingsMod
 import { ConfirmModal } from './components/common/ConfirmModal';
 import { Toast } from './components/common/Toast';
 import { storageService } from './services/storageService';
+import { recalculateProduct, productUsesSupply } from './utils/costing';
 
 export function App() {
   const [activeTab, setActiveTab] = useState('manufacturing'); // Defaults to 'manufacturing' for quick costing!
@@ -16,6 +19,7 @@ export function App() {
   const [quotes, setQuotes] = useState([]);
   const [supplies, setSupplies] = useState([]);
   const [workshopRates, setWorkshopRates] = useState({ hourlyRate: 6000, inkCostPerA4: 180, powerMachineCostPerA4: 90 });
+  const [quickTemplates, setQuickTemplates] = useState([]);
   const [businessInfo, setBusinessInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -33,6 +37,8 @@ export function App() {
   // Modals & Dialogs
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState(null);
+  const [supplyModalOpen, setSupplyModalOpen] = useState(false);
+  const [supplyToEdit, setSupplyToEdit] = useState(null);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
 
   // Confirmation modal
@@ -58,12 +64,13 @@ export function App() {
   const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
-      const [storedProducts, storedQuotes, storedBiz, storedSupplies, storedRates] = await Promise.all([
+      const [storedProducts, storedQuotes, storedBiz, storedSupplies, storedRates, storedTemplates] = await Promise.all([
         storageService.getProducts(),
         storageService.getQuotes(),
         storageService.getBusinessInfo(),
         storageService.getSupplies(),
-        storageService.getWorkshopRates()
+        storageService.getWorkshopRates(),
+        storageService.getQuickTemplates()
       ]);
 
       setProducts(storedProducts);
@@ -71,6 +78,7 @@ export function App() {
       setBusinessInfo(storedBiz);
       setSupplies(storedSupplies);
       setWorkshopRates(storedRates);
+      setQuickTemplates(storedTemplates);
 
       // Initialize default valid date for quote
       const defaultDays = storedBiz?.defaultValidityDays || 15;
@@ -118,6 +126,16 @@ export function App() {
     }
   };
 
+  const handleSaveQuickTemplates = async (newTemplates) => {
+    try {
+      await storageService.saveQuickTemplates(newTemplates);
+      setQuickTemplates(newTemplates);
+    } catch (err) {
+      console.error(err);
+      showToast('Error al guardar las plantillas', 'error');
+    }
+  };
+
   const handleSaveWorkshopRates = async (newRates) => {
     try {
       await storageService.saveWorkshopRates(newRates);
@@ -127,6 +145,71 @@ export function App() {
       console.error(err);
       showToast('Error al guardar tarifas', 'error');
     }
+  };
+
+  // ==========================================
+  // HANDLERS: INSUMOS
+  // ==========================================
+  // Recalcula costo y venta sugerida de los productos armados con insumos
+  const recalculateProductsWithSupplies = async (currentSupplies) => {
+    const currentProducts = await storageService.getProducts();
+    const recalculated = currentProducts.map(product => recalculateProduct(product, currentSupplies));
+    await storageService.saveAllProducts(recalculated);
+    setProducts(recalculated);
+  };
+
+  const handleOpenAddSupply = () => {
+    setSupplyToEdit(null);
+    setSupplyModalOpen(true);
+  };
+
+  const handleOpenEditSupply = (supply) => {
+    setSupplyToEdit(supply);
+    setSupplyModalOpen(true);
+  };
+
+  const handleSaveSupply = async (formData) => {
+    try {
+      if (supplyToEdit) {
+        await storageService.updateSupply({ ...supplyToEdit, ...formData });
+        showToast('Insumo actualizado. Se recalcularon los productos que lo usan.', 'success');
+      } else {
+        await storageService.saveSupply(formData);
+        showToast('Insumo agregado', 'success');
+      }
+      const updatedSupplies = await storageService.getSupplies();
+      setSupplies(updatedSupplies);
+      await recalculateProductsWithSupplies(updatedSupplies);
+      setSupplyModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      showToast('Error al guardar el insumo', 'error');
+    }
+  };
+
+  const handleDeleteSupply = (supply) => {
+    const usageCount = products.filter(p => productUsesSupply(p, supply.id)).length;
+    setConfirmState({
+      isOpen: true,
+      title: '¿Eliminar insumo?',
+      message: usageCount > 0
+        ? `"${supply.name}" se usa en ${usageCount} producto(s). Esos productos conservarán el último valor unitario conocido.`
+        : `Se eliminará "${supply.name}" del ABM de insumos.`,
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await storageService.deleteSupply(supply.id);
+          const updated = await storageService.getSupplies();
+          setSupplies(updated);
+          showToast('Insumo eliminado', 'info');
+        } catch (err) {
+          console.error(err);
+          showToast('No se pudo eliminar el insumo', 'error');
+        } finally {
+          setConfirmState(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
   };
 
   // ==========================================
@@ -302,6 +385,7 @@ export function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         productCount={products.length}
+        supplyCount={supplies.length}
         quoteItemsCount={quoteState.items.length}
         historyCount={quotes.length}
         businessInfo={businessInfo}
@@ -317,6 +401,8 @@ export function App() {
             products={products}
             workshopRates={workshopRates}
             onSaveRates={handleSaveWorkshopRates}
+            quickTemplates={quickTemplates}
+            onSaveQuickTemplates={handleSaveQuickTemplates}
             onSendToQuote={handleSendManufacturingToQuote}
             onSaveToProducts={handleSaveManufacturingToCatalog}
             currencySymbol={symbol}
@@ -348,6 +434,18 @@ export function App() {
           />
         )}
 
+        {/* Pestaña: ABM Insumos */}
+        {activeTab === 'supplies' && (
+          <SupplyList
+            supplies={supplies}
+            products={products}
+            onAddSupply={handleOpenAddSupply}
+            onEditSupply={handleOpenEditSupply}
+            onDeleteSupply={handleDeleteSupply}
+            currencySymbol={symbol}
+          />
+        )}
+
         {/* Pestaña: Historial */}
         {activeTab === 'history' && (
           <QuoteHistory
@@ -367,6 +465,15 @@ export function App() {
         onClose={() => setProductModalOpen(false)}
         onSave={handleSaveProduct}
         productToEdit={productToEdit}
+        supplies={supplies}
+        currencySymbol={symbol}
+      />
+
+      <SupplyModal
+        isOpen={supplyModalOpen}
+        onClose={() => setSupplyModalOpen(false)}
+        onSave={handleSaveSupply}
+        supplyToEdit={supplyToEdit}
         currencySymbol={symbol}
       />
 
