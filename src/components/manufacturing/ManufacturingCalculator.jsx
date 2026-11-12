@@ -23,7 +23,8 @@ import {
 import { formatCurrency } from '../../utils/formatters';
 
 export const ManufacturingCalculator = ({ 
-  supplies = [], 
+  supplies = [],
+  products = [], 
   workshopRates = { hourlyLaborRate: 6000, hourlyElectricityRate: 1800, inkCostPerSheet: 180 }, 
   onSaveRates, 
   onSaveNewSupply, 
@@ -61,6 +62,7 @@ export const ManufacturingCalculator = ({
 
   const [ratesSavedNotice, setRatesSavedNotice] = useState(false);
   const [showPresetHelp, setShowPresetHelp] = useState(false);
+  const [materialSearches, setMaterialSearches] = useState({});
 
   useEffect(() => {
     if (workshopRates) {
@@ -147,17 +149,30 @@ export const ManufacturingCalculator = ({
 
   // Add material row
   const handleAddMaterialRow = () => {
-    const firstSupply = supplies[0] || { id: 'custom', name: 'Material nuevo', unitCost: 100 };
+    const id = `mat-${Date.now()}`;
     setJobMaterials([
       ...jobMaterials,
       {
-        id: `mat-${Date.now()}`,
-        supplyId: firstSupply.id,
-        name: firstSupply.name,
+        id,
+        supplyId: '',
+        name: '',
         quantity: 1,
-        unitCost: firstSupply.unitCost
+        unitCost: 0
       }
     ]);
+    setMaterialSearches(prev => ({ ...prev, [id]: '' }));
+  };
+
+  const handleSelectCatalogProduct = (index, product) => {
+    const updated = [...jobMaterials];
+    updated[index] = {
+      ...updated[index],
+      supplyId: product.id,
+      name: product.name,
+      unitCost: Number(product.cost) || 0
+    };
+    setJobMaterials(updated);
+    setMaterialSearches(prev => ({ ...prev, [updated[index].id]: '' }));
   };
 
   const handleUpdateMaterialRow = (index, field, value) => {
@@ -176,7 +191,15 @@ export const ManufacturingCalculator = ({
   };
 
   const handleRemoveMaterialRow = (index) => {
+    const removed = jobMaterials[index];
     setJobMaterials(jobMaterials.filter((_, idx) => idx !== index));
+    if (removed?.id) {
+      setMaterialSearches(prev => {
+        const next = { ...prev };
+        delete next[removed.id];
+        return next;
+      });
+    }
   };
 
   // Live Calculations
@@ -410,18 +433,50 @@ export const ManufacturingCalculator = ({
 
                 return (
                   <div key={mat.id || index} className="p-3 bg-slate-50 rounded-xl border border-slate-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex-1">
-                      <select
-                        value={mat.supplyId}
-                        onChange={(e) => handleUpdateMaterialRow(index, 'supplyId', e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400"
-                      >
-                        {supplies.map(sup => (
-                          <option key={sup.id} value={sup.id}>
-                            {sup.name} ({sup.unit}) — {formatCurrency(sup.unitCost, currencySymbol)}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="flex-1 relative">
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                        <input
+                          type="text"
+                          value={materialSearches[mat.id] ?? (products.find(p => p.id === mat.supplyId)?.name || '')}
+                          onChange={(e) => setMaterialSearches(prev => ({ ...prev, [mat.id]: e.target.value }))}
+                          placeholder="Buscar insumo en ABM de productos..."
+                          className="w-full pl-9 pr-3 py-2 text-xs font-semibold bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400"
+                        />
+                      </div>
+                      {(materialSearches[mat.id] || '').trim().length > 0 && (
+                        <div className="absolute z-20 top-full left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl">
+                          {products.filter(product => {
+                            const query = (materialSearches[mat.id] || '').trim().toLowerCase();
+                            return product.name.toLowerCase().includes(query) ||
+                              (product.category || '').toLowerCase().includes(query);
+                          }).slice(0, 12).map(product => (
+                            <button
+                              key={product.id}
+                              type="button"
+                              onClick={() => handleSelectCatalogProduct(index, product)}
+                              className="w-full px-3 py-2 text-left hover:bg-brand-50 border-b border-slate-100 last:border-0"
+                            >
+                              <span className="block text-xs font-semibold text-slate-800">{product.name}</span>
+                              <span className="block text-[10px] text-slate-500">
+                                {product.category || 'Sin categoría'} · Costo: {formatCurrency(product.cost, currencySymbol)}
+                              </span>
+                            </button>
+                          ))}
+                          {products.filter(product => {
+                            const query = (materialSearches[mat.id] || '').trim().toLowerCase();
+                            return product.name.toLowerCase().includes(query) ||
+                              (product.category || '').toLowerCase().includes(query);
+                          }).length === 0 && (
+                            <p className="px-3 py-3 text-xs text-slate-500">No se encontraron productos en el ABM.</p>
+                          )}
+                        </div>
+                      )}
+                      {mat.name && (
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          Seleccionado: {mat.name} · Costo unitario: {formatCurrency(mat.unitCost, currencySymbol)}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-3">
