@@ -314,6 +314,7 @@ export function App() {
         {activeTab === 'manufacturing' && (
           <ManufacturingCalculator
             supplies={supplies}
+            products={products}
             workshopRates={workshopRates}
             onSaveRates={handleSaveWorkshopRates}
             onSendToQuote={handleSendManufacturingToQuote}
