@@ -172,7 +172,7 @@ export const ManufacturingCalculator = ({
       unitCost: Number(product.cost) || 0
     };
     setJobMaterials(updated);
-    setMaterialSearches(prev => ({ ...prev, [updated[index].id]: '' }));
+    setMaterialSearches(prev => ({ ...prev, [updated[index].id]: product.name }));
   };
 
   const handleUpdateMaterialRow = (index, field, value) => {
@@ -438,13 +438,13 @@ export const ManufacturingCalculator = ({
                         <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
                         <input
                           type="text"
-                          value={materialSearches[mat.id] ?? (products.find(p => p.id === mat.supplyId)?.name || '')}
+                          value={materialSearches[mat.id] ?? (products.find(p => p.id === mat.supplyId)?.name || mat.name || '')}
                           onChange={(e) => setMaterialSearches(prev => ({ ...prev, [mat.id]: e.target.value }))}
                           placeholder="Buscar insumo en ABM de productos..."
                           className="w-full pl-9 pr-3 py-2 text-xs font-semibold bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-400"
                         />
                       </div>
-                      {(materialSearches[mat.id] || '').trim().length > 0 && (
+                      {(materialSearches[mat.id] || '').trim().length > 0 && (materialSearches[mat.id] || '').trim().toLowerCase() !== (products.find(p => p.id === mat.supplyId)?.name || '').trim().toLowerCase() && (
                         <div className="absolute z-20 top-full left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl">
                           {products.filter(product => {
                             const query = (materialSearches[mat.id] || '').trim().toLowerCase();
