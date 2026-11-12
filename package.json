@@ -1,7 +1,7 @@
 {
   "name": "tiker-cotizador",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Tiker - Sistema de Costos de Productos y Cotizador",
   "author": "Tiker",
   "main": "electron/main.cjs",
