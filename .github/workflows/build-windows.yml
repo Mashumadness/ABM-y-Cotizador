@@ -1,16 +1,6 @@
 name: Build Windows installer
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'public/**'
-      - 'electron/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'vite.config.js'
-      - '.github/workflows/build-windows.yml'
   workflow_dispatch:
 
 permissions:
@@ -41,3 +31,4 @@ jobs:
             dist-electron/latest.yml
           if-no-files-found: error
           retention-days: 14
+  
