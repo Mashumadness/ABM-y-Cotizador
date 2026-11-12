@@ -24,7 +24,7 @@
         "provider": "github",
         "owner": "Mashumadness",
         "repo": "ABM-y-Cotizador",
-        "releaseType": "release"
+        "releaseType": "draft"
       }
     ],
     "files": [

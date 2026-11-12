@@ -39,6 +39,8 @@ jobs:
 
       - name: Validar versión
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           if ! [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -47,6 +49,10 @@ jobs:
           fi
           if git ls-remote --exit-code --tags origin "refs/tags/v$NEW_VERSION" >/dev/null; then
             echo "::error::Ya existe el tag v$NEW_VERSION."
+            exit 1
+          fi
+          if gh release view "v$NEW_VERSION" >/dev/null 2>&1; then
+            echo "::error::Ya existe un Release v$NEW_VERSION (puede ser un borrador). Borralo o usá otra versión."
             exit 1
           fi
           HIGHEST=$(printf '%s\n%s\n' "$CURRENT_VERSION" "$NEW_VERSION" | sort -V | tail -n1)
@@ -63,26 +69,61 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build y publicar en GitHub Releases
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run electron:build -- --publish always
-
-      - name: Guardar versión y crear tag
+      # Se guarda la versión en main antes de crear el Release, así el tag apunta a este commit
+      - name: Guardar versión en main
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json
           git commit -m "Release v$NEW_VERSION"
-          git tag "v$NEW_VERSION"
           git push origin HEAD:main
-          git push origin "v$NEW_VERSION"
 
-      - name: Agregar novedades al Release
-        if: ${{ inputs.notes != '' }}
+      # Se crea el Release como borrador ANTES del build: así el instalador y el portable
+      # suben sus archivos al mismo Release (si no, los dos intentan crearlo a la vez y falla).
+      - name: Crear Release en borrador
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_NOTES: ${{ inputs.notes }}
-        run: gh release edit "v$NEW_VERSION" --notes "$RELEASE_NOTES"
+        run: |
+          gh release create "v$NEW_VERSION" --draft --target "$(git rev-parse HEAD)" --title "$NEW_VERSION" --notes "${RELEASE_NOTES:-Versión $NEW_VERSION}"
+
+      - name: Build y subir archivos al Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run electron:build -- --publish always
+
+      - name: Verificar archivos de actualización
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ASSETS=$(gh release view "v$NEW_VERSION" --json assets --jq '.assets[].name')
+          echo "$ASSETS"
+          for REQUIRED in "latest.yml" "Tiker-Cotizador-Setup-$NEW_VERSION.exe" "Tiker-Cotizador-Setup-$NEW_VERSION.exe.blockmap"; do
+            if ! grep -qx "$REQUIRED" <<< "$ASSETS"; then
+              echo "::error::Falta $REQUIRED en el Release."
+              exit 1
+            fi
+          done
+
+      # Recién acá la versión queda visible para las apps instaladas (y se crea el tag)
+      - name: Publicar Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "v$NEW_VERSION" --draft=false --latest
+
+      # Si algo falló antes de publicar, se borra el borrador para poder reintentar con la misma versión
+      - name: Limpiar borrador si falló
+        if: ${{ failure() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          IS_DRAFT=$(gh release view "v$NEW_VERSION" --json isDraft --jq '.isDraft' 2>/dev/null || echo "")
+          if [ "$IS_DRAFT" = "true" ]; then
+            gh release delete "v$NEW_VERSION" --yes --cleanup-tag
+            echo "Se borró el borrador v$NEW_VERSION. Revisá el error y volvé a correr el workflow."
+          fi
