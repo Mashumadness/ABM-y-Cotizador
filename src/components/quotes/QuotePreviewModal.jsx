@@ -139,7 +139,7 @@ export const QuotePreviewModal = ({
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div>
                 <img 
-                  src="/logo-tiker.png" 
+                  src={`${import.meta.env.BASE_URL}logo-tiker.png`} 
                   alt="Tiker Logo" 
                   className="h-16 w-auto object-contain mb-1.5 print:h-14" 
                 />
