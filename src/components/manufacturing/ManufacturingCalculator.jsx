@@ -27,6 +27,9 @@ import { formatCurrency } from '../../utils/formatters';
 // Último estado del punto 3 (operación de máquinas, tinta y mano de obra)
 const OPERATION_STORAGE_KEY = 'tiker_manufacturing_operation_v1';
 
+// Permite dejar el campo vacío mientras se escribe (vacío cuenta como 0 en los cálculos)
+const toNonNegativeInputValue = (rawValue) => (rawValue === '' ? '' : Math.max(0, Number(rawValue)));
+
 export const ManufacturingCalculator = ({ 
   supplies = [],
   products = [], 
@@ -68,7 +71,8 @@ export const ManufacturingCalculator = ({
     }
   });
   const [sheetsToPrint, setSheetsToPrint] = useState(savedOperation.sheetsToPrint ?? 5);
-  const [inkRatePerSheet, setInkRatePerSheet] = useState(savedOperation.inkRatePerSheet ?? (workshopRates?.inkCostPerSheet || 180));
+  // La tinta por hoja no se edita acá: siempre sale de las Tarifas Base del taller
+  const [inkRatePerSheet, setInkRatePerSheet] = useState(workshopRates?.inkCostPerSheet || 180);
   const [electricityMinutes, setElectricityMinutes] = useState(savedOperation.electricityMinutes ?? 30);
   const [hourlyElectricityRate, setHourlyElectricityRate] = useState(savedOperation.hourlyElectricityRate ?? (workshopRates?.hourlyElectricityRate || 1800));
   const [laborMinutes, setLaborMinutes] = useState(savedOperation.laborMinutes ?? 45);
@@ -114,10 +118,10 @@ export const ManufacturingCalculator = ({
         hourlyElectricityRate: workshopRates.hourlyElectricityRate || 1800,
         inkCostPerSheet: workshopRates.inkCostPerSheet || 180
       });
+      setInkRatePerSheet(workshopRates.inkCostPerSheet || 180);
       if (!ratesChanged) return;
       setHourlyLaborRate(workshopRates.hourlyLaborRate || 6000);
       setHourlyElectricityRate(workshopRates.hourlyElectricityRate || 1800);
-      setInkRatePerSheet(workshopRates.inkCostPerSheet || 180);
     }
   }, [workshopRates]);
 
@@ -775,7 +779,7 @@ export const ManufacturingCalculator = ({
             )}
 
             {/* Inputs de cálculo para el trabajo actual (Perfectamente alineados) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* 1. Hojas Impresas */}
               <div className="flex flex-col justify-between">
                 <div className="min-h-[38px] flex items-end mb-1.5">
@@ -787,28 +791,13 @@ export const ManufacturingCalculator = ({
                   type="number"
                   min="0"
                   value={sheetsToPrint}
-                  onChange={(e) => setSheetsToPrint(Math.max(0, Number(e.target.value)))}
+                  placeholder="0"
+                  onChange={(e) => setSheetsToPrint(toNonNegativeInputValue(e.target.value))}
                   className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm font-bold bg-slate-50 text-center focus:ring-2 focus:ring-brand-400 focus:outline-none"
                 />
               </div>
 
-              {/* 2. Tinta x Hoja ($) */}
-              <div className="flex flex-col justify-between">
-                <div className="min-h-[38px] flex items-end mb-1.5">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase leading-snug">
-                    Tinta x Hoja ({currencySymbol})
-                  </label>
-                </div>
-                <input
-                  type="number"
-                  min="0"
-                  value={inkRatePerSheet}
-                  onChange={(e) => setInkRatePerSheet(Number(e.target.value))}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm font-bold bg-slate-50 text-center focus:ring-2 focus:ring-brand-400 focus:outline-none"
-                />
-              </div>
-
-              {/* 3. Minutos Energía Eléctrica */}
+              {/* Minutos Energía Eléctrica */}
               <div className="flex flex-col justify-between">
                 <div className="min-h-[38px] flex items-end mb-1.5">
                   <label className="text-[11px] font-bold text-slate-600 uppercase leading-snug">
@@ -819,7 +808,8 @@ export const ManufacturingCalculator = ({
                   type="number"
                   min="0"
                   value={electricityMinutes}
-                  onChange={(e) => setElectricityMinutes(Math.max(0, Number(e.target.value)))}
+                  placeholder="0"
+                  onChange={(e) => setElectricityMinutes(toNonNegativeInputValue(e.target.value))}
                   className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm font-bold bg-slate-50 text-center focus:ring-2 focus:ring-brand-400 focus:outline-none"
                 />
               </div>
@@ -835,7 +825,8 @@ export const ManufacturingCalculator = ({
                   type="number"
                   min="0"
                   value={laborMinutes}
-                  onChange={(e) => setLaborMinutes(Math.max(0, Number(e.target.value)))}
+                  placeholder="0"
+                  onChange={(e) => setLaborMinutes(toNonNegativeInputValue(e.target.value))}
                   className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm font-bold bg-slate-50 text-center focus:ring-2 focus:ring-brand-400 focus:outline-none"
                 />
               </div>
@@ -844,15 +835,15 @@ export const ManufacturingCalculator = ({
             {/* Desglose en vivo de operaciones */}
             <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs flex flex-wrap items-center justify-between gap-3">
               <div>
-                <span className="text-slate-500">Tinta ({sheetsToPrint} hojas @ {formatCurrency(inkRatePerSheet, currencySymbol)}): </span>
+                <span className="text-slate-500">Tinta ({Number(sheetsToPrint) || 0} hojas @ {formatCurrency(inkRatePerSheet, currencySymbol)}): </span>
                 <strong className="text-slate-800">{formatCurrency(calculations.inkCost, currencySymbol)}</strong>
               </div>
               <div>
-                <span className="text-slate-500">Luz ({electricityMinutes} min @ {formatCurrency(hourlyElectricityRate, currencySymbol)}/h): </span>
+                <span className="text-slate-500">Luz ({Number(electricityMinutes) || 0} min @ {formatCurrency(hourlyElectricityRate, currencySymbol)}/h): </span>
                 <strong className="text-slate-800">{formatCurrency(calculations.electricityCost, currencySymbol)}</strong>
               </div>
               <div>
-                <span className="text-slate-500">Mano de Obra ({laborMinutes} min @ {formatCurrency(hourlyLaborRate, currencySymbol)}/h): </span>
+                <span className="text-slate-500">Mano de Obra ({Number(laborMinutes) || 0} min @ {formatCurrency(hourlyLaborRate, currencySymbol)}/h): </span>
                 <strong className="text-indigo-700">{formatCurrency(calculations.laborMinutesCost, currencySymbol)}</strong>
               </div>
             </div>
@@ -879,15 +870,15 @@ export const ManufacturingCalculator = ({
                 <span className="text-slate-200 font-semibold">{formatCurrency(calculations.materialsCost, currencySymbol)}</span>
               </div>
               <div className="flex justify-between text-slate-400">
-                <span>Tinta ({sheetsToPrint} hojas):</span>
+                <span>Tinta ({Number(sheetsToPrint) || 0} hojas):</span>
                 <span className="text-slate-200 font-semibold">{formatCurrency(calculations.inkCost, currencySymbol)}</span>
               </div>
               <div className="flex justify-between text-slate-400">
-                <span>Energía Eléctrica ({electricityMinutes} min):</span>
+                <span>Energía Eléctrica ({Number(electricityMinutes) || 0} min):</span>
                 <span className="text-slate-200 font-semibold">{formatCurrency(calculations.electricityCost, currencySymbol)}</span>
               </div>
               <div className="flex justify-between text-slate-400">
-                <span>Mano de Obra ({laborMinutes} min):</span>
+                <span>Mano de Obra ({Number(laborMinutes) || 0} min):</span>
                 <span className="text-slate-200 font-semibold">{formatCurrency(calculations.laborMinutesCost, currencySymbol)}</span>
               </div>
 
