@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, Package, Layers, Check, Plus, Trash2 } from 'lucide-react';
+import { X, Package, Layers, Check, Plus, Trash2, Clock } from 'lucide-react';
 import { CATEGORIES } from '../../constants/defaultData';
 import { formatCurrency } from '../../utils/formatters';
 import { calculateMaterialsCost, calculateSuggestedPrice, getMaterialUnitCost } from '../../utils/costing';
 
 const DEFAULT_MARGIN_PERCENT = 150;
 
-export const ProductModal = ({ isOpen, onClose, onSave, productToEdit, supplies = [], currencySymbol = '$' }) => {
+export const ProductModal = ({ isOpen, onClose, onSave, productToEdit, supplies = [], currencySymbol = '$', workshopRates = {} }) => {
   const [formData, setFormData] = useState({
     name: '',
     category: CATEGORIES[0],
@@ -19,7 +19,10 @@ export const ProductModal = ({ isOpen, onClose, onSave, productToEdit, supplies 
   // Composición del producto
   const [costMode, setCostMode] = useState('supplies'); // 'supplies' | 'manual'
   const [materials, setMaterials] = useState([]);
-  const [extraCosts, setExtraCosts] = useState('');
+  // Tiempos de producción desglosados
+  const [laborMinutes, setLaborMinutes] = useState('');
+  const [electricityMinutes, setElectricityMinutes] = useState('');
+  const [printSheets, setPrintSheets] = useState('');
   const [marginPercent, setMarginPercent] = useState(DEFAULT_MARGIN_PERCENT);
 
   const [errors, setErrors] = useState({});
@@ -38,7 +41,9 @@ export const ProductModal = ({ isOpen, onClose, onSave, productToEdit, supplies 
       setCustomCategory(!CATEGORIES.includes(productToEdit.category));
       setCostMode(productToEdit.costMode === 'supplies' ? 'supplies' : 'manual');
       setMaterials((productToEdit.materials || []).map(m => ({ ...m })));
-      setExtraCosts(productToEdit.extraCosts ? String(productToEdit.extraCosts) : '');
+      setLaborMinutes(productToEdit.laborMinutes !== undefined ? String(productToEdit.laborMinutes) : '');
+      setElectricityMinutes(productToEdit.electricityMinutes !== undefined ? String(productToEdit.electricityMinutes) : '');
+      setPrintSheets(productToEdit.printSheets !== undefined ? String(productToEdit.printSheets) : '');
       setMarginPercent(productToEdit.marginPercent ?? DEFAULT_MARGIN_PERCENT);
     } else {
       setFormData({
@@ -52,7 +57,9 @@ export const ProductModal = ({ isOpen, onClose, onSave, productToEdit, supplies 
       setCustomCategory(false);
       setCostMode('supplies');
       setMaterials([]);
-      setExtraCosts('');
+      setLaborMinutes('');
+      setElectricityMinutes('');
+      setPrintSheets('');
       setMarginPercent(DEFAULT_MARGIN_PERCENT);
     }
     setErrors({});
@@ -62,7 +69,18 @@ export const ProductModal = ({ isOpen, onClose, onSave, productToEdit, supplies 
 
   const isSuppliesMode = costMode === 'supplies';
   const materialsCost = calculateMaterialsCost(materials, supplies);
-  const suppliesModeCost = Math.round(materialsCost + (Number(extraCosts) || 0));
+
+  // Costo de tiempos desglosados, usando las tarifas del taller
+  const hourlyLaborRate = Number(workshopRates.hourlyRate) || Number(workshopRates.hourlyLaborRate) || 0;
+  const hourlyElectricityRate = Number(workshopRates.hourlyElectricityRate) || 0;
+  const inkCostPerSheet = Number(workshopRates.inkCostPerA4) || Number(workshopRates.inkCostPerSheet) || 0;
+
+  const laborCost = (Number(laborMinutes) || 0) * (hourlyLaborRate / 60);
+  const electricityCost = (Number(electricityMinutes) || 0) * (hourlyElectricityRate / 60);
+  const printCost = (Number(printSheets) || 0) * inkCostPerSheet;
+  const productionCost = Math.round(laborCost + electricityCost + printCost);
+
+  const suppliesModeCost = Math.round(materialsCost + productionCost);
   const suppliesModePrice = Math.round(calculateSuggestedPrice(suppliesModeCost, marginPercent));
 
   const costNum = isSuppliesMode ? suppliesModeCost : Number(formData.cost) || 0;
@@ -102,7 +120,9 @@ export const ProductModal = ({ isOpen, onClose, onSave, productToEdit, supplies 
           quantity: Number(m.quantity) || 0,
           unitCost: getMaterialUnitCost(m, supplies)
         })),
-        extraCosts: Number(extraCosts) || 0,
+        laborMinutes: Number(laborMinutes) || 0,
+        electricityMinutes: Number(electricityMinutes) || 0,
+        printSheets: Number(printSheets) || 0,
         marginPercent: Number(marginPercent) || 0,
         cost: suppliesModeCost,
         price: suppliesModePrice,
@@ -331,27 +351,89 @@ export const ProductModal = ({ isOpen, onClose, onSave, productToEdit, supplies 
                 {errors.materials && <p className="text-xs text-rose-500 font-medium">{errors.materials}</p>}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Otros costos */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5" title="Tinta, luz y mano de obra (se completa al guardar desde Costos de productos)">
-                    Otros costos
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">{currencySymbol}</span>
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      placeholder="0"
-                      value={extraCosts}
-                      onChange={(e) => setExtraCosts(e.target.value)}
-                      className="w-full pl-7 pr-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-                    />
+              {/* Tiempos de producción */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/70 space-y-2">
+                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  Tiempos de producción
+                </span>
+                <div className="grid grid-cols-3 gap-2">
+                  {/* Mano de obra */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                      Mano de obra
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        placeholder="0"
+                        value={laborMinutes}
+                        onChange={(e) => setLaborMinutes(e.target.value)}
+                        className="w-full px-2 pr-7 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      />
+                      <span className="absolute right-2 top-1.5 text-[10px] text-slate-400">min</span>
+                    </div>
+                    {hourlyLaborRate > 0 && (
+                      <span className="text-[10px] text-slate-400">
+                        = {formatCurrency(laborCost, currencySymbol)}
+                      </span>
+                    )}
                   </div>
-                  <span className="text-[10px] text-slate-400">Tinta, luz, mano de obra</span>
+                  {/* Luz máquina */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                      Luz máquina
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        placeholder="0"
+                        value={electricityMinutes}
+                        onChange={(e) => setElectricityMinutes(e.target.value)}
+                        className="w-full px-2 pr-7 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      />
+                      <span className="absolute right-2 top-1.5 text-[10px] text-slate-400">min</span>
+                    </div>
+                    {hourlyElectricityRate > 0 && (
+                      <span className="text-[10px] text-slate-400">
+                        = {formatCurrency(electricityCost, currencySymbol)}
+                      </span>
+                    )}
+                  </div>
+                  {/* Impresión hojas */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                      Impresión hojas
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        placeholder="0"
+                        value={printSheets}
+                        onChange={(e) => setPrintSheets(e.target.value)}
+                        className="w-full px-2 pr-7 py-1.5 rounded-lg border border-slate-200 bg-white text-xs text-center focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      />
+                      <span className="absolute right-2 top-1.5 text-[10px] text-slate-400">hjs</span>
+                    </div>
+                    {inkCostPerSheet > 0 && (
+                      <span className="text-[10px] text-slate-400">
+                        = {formatCurrency(printCost, currencySymbol)}
+                      </span>
+                    )}
+                  </div>
                 </div>
+                <div className="flex justify-end text-xs font-bold text-slate-700 pt-1 border-t border-slate-200/70">
+                  Total producción: <span className="ml-2 text-amber-700">{formatCurrency(productionCost, currencySymbol)}</span>
+                </div>
+              </div>
 
+              <div className="grid grid-cols-2 gap-3">
                 {/* Margen */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -391,7 +473,7 @@ export const ProductModal = ({ isOpen, onClose, onSave, productToEdit, supplies 
                 <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/70">
                   <span className="block font-semibold text-amber-900">Costo</span>
                   <span className="block text-base font-extrabold text-amber-700">{formatCurrency(costNum, currencySymbol)}</span>
-                  <span className="text-[10px] text-slate-500">Insumos + otros costos</span>
+                  <span className="text-[10px] text-slate-500">Insumos + producción</span>
                 </div>
                 <div className="p-3 rounded-xl bg-brand-50 border border-brand-200/70">
                   <span className="block font-semibold text-brand-900">Venta sugerida</span>

@@ -467,6 +467,7 @@ export function App() {
         productToEdit={productToEdit}
         supplies={supplies}
         currencySymbol={symbol}
+        workshopRates={workshopRates}
       />
 
       <SupplyModal
