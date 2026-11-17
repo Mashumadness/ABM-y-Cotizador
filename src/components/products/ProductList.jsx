@@ -5,6 +5,7 @@ import {
   Filter, 
   Edit3, 
   Trash2, 
+  Copy,
   Package, 
   TrendingUp, 
   DollarSign, 
@@ -21,6 +22,7 @@ export const ProductList = ({
   products = [], 
   onAddProduct, 
   onEditProduct, 
+  onDuplicateProduct,
   onDeleteProduct, 
   onQuickAddToQuote,
   currencySymbol = '$' 
@@ -349,6 +351,13 @@ export const ProductList = ({
                       title="Editar producto"
                     >
                       <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => onDuplicateProduct(product)}
+                      className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+                      title="Duplicar producto"
+                    >
+                      <Copy className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => onDeleteProduct(product)}

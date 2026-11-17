@@ -243,6 +243,19 @@ export function App() {
     }
   };
 
+  const handleDuplicateProduct = async (prod) => {
+    try {
+      const { id, createdAt, updatedAt, ...rest } = prod;
+      await storageService.saveProduct({ ...rest, name: `${prod.name} (copia)` });
+      const updated = await storageService.getProducts();
+      setProducts(updated);
+      showToast(`"${prod.name}" duplicado exitosamente`, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Error al duplicar el producto', 'error');
+    }
+  };
+
   const handleDeleteProduct = (prod) => {
     setConfirmState({
       isOpen: true,
@@ -428,6 +441,7 @@ export function App() {
             products={products}
             onAddProduct={handleOpenAddProduct}
             onEditProduct={handleOpenEditProduct}
+            onDuplicateProduct={handleDuplicateProduct}
             onDeleteProduct={handleDeleteProduct}
             onQuickAddToQuote={handleQuickAddToQuote}
             currencySymbol={symbol}
